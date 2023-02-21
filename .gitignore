@@ -1,0 +1,12 @@
+lib/*
+lib64/*
+lib64
+include/*
+bin/*
+pyvenv.cfg
+
+src/config.json
+
+test/*
+
+src/log.txt

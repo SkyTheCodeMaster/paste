@@ -1,0 +1,218 @@
+openapi: 3.0.0
+
+info:
+  title: Paste server API
+  description: API for Sky's paste server
+  version: 0.0.1
+  
+components:
+  securitySchemes:
+    bearerAuth:            # arbitrary name for the security scheme
+      type: http
+      scheme: bearer
+      
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or is invalid
+      
+  schemas:
+    Paste:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The paste ID
+        creator:
+          type: string
+          description: The name of the creator of the paste.
+        title:
+          type: string
+          description: The title of the paste.
+        visibility:
+          type: integer
+          description: The visibility of the paste, 1 is public, 2 is unlisted, 3 is private.
+          
+    ArrayOfPaste:
+      type: array
+      items:
+        $ref: '#/components/schemas/Paste'
+    
+    PastePost:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Content of the paste.
+        title:
+          type: string
+          description: The title of the paste.
+        visibility:
+          type: integer
+          description: The visibility of the paste, 1 is public, 2 is unlisted, 3 is private.
+          
+    PastePostEdit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The paste ID
+        content:
+          type: string
+          description: Content of the paste.
+        title:
+          type: string
+          description: The title of the paste.
+        visibility:
+          type: integer
+          description: The visibility of the paste, 1 is public, 2 is unlisted, 3 is private.
+  
+servers:
+  - url: https://paste.skystuff.games/
+    description: Production server, available to public.
+  - url: https://paste-beta.skystuff.games/
+    description: Beta server, account creation restricted.
+    
+paths:
+  /api/paste/get/{pasteID}:
+    get:
+      summary: Returns information about a paste ID.
+      security:
+        - bearerAuth: []
+      parameters:
+      - in: path
+        name: pasteID
+        schema:
+          type: string
+        required: true
+        description: The ID of the paste, usually 8 characters.
+      responses:
+        '200':    # status code
+          description: JSON information about the paste.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/Paste'
+        '401':
+          description: If the paste is private, or the authorization for this paste is invalid, a 401 will be returned.
+        '404':
+          description: Returned if the paste does not exist.
+  
+  /api/paste/raw/get/{pasteID}:
+    get:
+      summary: Returns the text content of a paste.
+      security:
+        - bearerAuth: []
+      parameters:
+      - in: path
+        name: pasteID
+        schema:
+          type: string
+        required: true
+        description: The ID of the paste, usually 8 characters.
+      responses:
+        '200':    # status code
+          description: Raw text content of a paste.
+          content:
+            text/plain:
+              schema: 
+                type: string
+        '401':
+          description: If the paste is private, or the authorization for this paste is invalid, a 401 will be returned.
+        '404':
+          description: Returned if the paste does not exist.
+          
+  /api/paste/search/:
+    get:
+      summary: Searches pastes based on query tags.
+      security:
+        - bearerAuth: []
+      parameters:
+      - in: query
+        name: title
+        schema:
+          type: string
+        description: Title of the paste to search for.
+      - in: query
+        name: creator
+        schema:
+          type: string
+        description: Name of the creator of the paste.
+      - in: query
+        name: results
+        schema:
+          type: integer
+        description: The number of results to return. Maximum of 250. Default of 50.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Page offset for results.
+        
+      responses:
+        '200':
+          description: JSON response of Paste objects.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrayOfPaste'
+  
+  /api/paste/create/:
+    post:
+      summary: Create a paste.
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: A JSON object describing the paste.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PastePost'
+      responses:
+        '200':
+          description: Paste was created successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Invalid authorization, or token does not have create intent.
+          
+  /api/paste/edit/:
+    post:
+      summary: Edit a paste
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: A JSON object describing the paste. Each parameter is optional.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PastePostEdit'
+              
+      responses:
+        '200':
+          description: Paste was edited successfully
+        '401':
+          description: Token does not own the paste, or does not have edit intent.
+        '404':
+          description: Paste not found.
+          
+  /api/paste/delete/{pasteID}:
+    delete:
+      summary: Delete a paste
+      security:
+        - bearerAuth: []
+      parameters:
+      - in: path
+        name: pasteID
+        schema:
+          type: string
+        required: true
+        description: The ID of the paste, usually 8 characters.
+      responses:
+        '200':
+          description: Deleted paste successfully.
+        '401':
+          description: Token does not own paste, or does not have delete intent.
