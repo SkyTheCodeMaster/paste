@@ -22,7 +22,7 @@ routes = web.RouteTableDef()
 async def apiPasteGet(request: web.Request) -> web.Response:
   pasteID: str = request.path.removeprefix("/api/paste/get/")
   app: web.Application = request.app
-  pg: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
 
   paste: Paste = await pg.getPastesFromSearch(id=pasteID)
 
@@ -32,7 +32,7 @@ async def apiPasteGet(request: web.Request) -> web.Response:
   if paste.visibility == Visibility.PRIVATE.value:
     headers = request.headers
     auth = headers.get("Authorization","")
-    token: Token = await pg.verifyToken(auth)
+    token: Token = await pg.verify_token(auth)
     if token and token.creator == paste.creator and token.permissions.viewPrivate:
       return web.Response(text=paste.json,content_type="application/json")
     else:
@@ -44,10 +44,10 @@ async def apiPasteGet(request: web.Request) -> web.Response:
 
 # Get raw paste data
 @routes.get("/api/paste/raw/get/{tail:.*}")
-async def apiPasteRawGet(request: web.Request) -> web.Response:
+async def api_paste_raw_get(request: web.Request) -> web.Response:
   pasteID: str = request.path.removeprefix("/api/paste/raw/get/")
   app: web.Application = request.app
-  pg: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
 
   paste: Paste = await pg.getPastesFromSearch(id=pasteID)
 
@@ -57,7 +57,7 @@ async def apiPasteRawGet(request: web.Request) -> web.Response:
   if paste.visibility == Visibility.PRIVATE.value:
     headers = request.headers
     auth = headers.get("Authorization","")
-    token: Token = await pg.verifyToken(auth)
+    token: Token = await pg.verify_token(auth)
     if token and token.creator == paste.creator and token.permissions.viewPrivate:
       return web.Response(text=paste.textContent,content_type="text/plain")
     else:
@@ -66,12 +66,12 @@ async def apiPasteRawGet(request: web.Request) -> web.Response:
     return web.Response(text=paste.textContent,content_type="text/plain")
 
 @routes.get("/api/paste/search/")
-async def apiPasteSearch(request: web.Request) -> web.Response:
+async def api_paste_search(request: web.Request) -> web.Response:
   print("got here 1')")
   query = request.query
   
   app: web.Application = request.app
-  pg: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
 
   title=""
   creator=""
@@ -90,7 +90,7 @@ async def apiPasteSearch(request: web.Request) -> web.Response:
 
   headers = request.headers
   auth = headers.get("Authorization","")
-  token = await pg.verifyToken(auth)
+  token = await pg.verify_token(auth)
   if title: regex: re.Pattern = re.compile(title.lower())
 
   async def search(paste: Paste,limit=limit,offset=offset) -> bool:
@@ -120,7 +120,7 @@ async def apiPasteSearch(request: web.Request) -> web.Response:
           return user.name.lower() == creator.lower() and paste.visibility == Visibility.PUBLIC.value
     return False
 
-  pastes = await pg.getPastesFromFunction(search)
+  pastes = await pg.get_pastes_from_function(search)
   print(pastes)
   # Convert list to json document
   j = []
@@ -134,9 +134,9 @@ async def apiPasteSearch(request: web.Request) -> web.Response:
   return web.Response(text=json.dumps(j),content_type="application/json")
 
 @routes.post("/api/paste/create/")
-async def apiPasteCreate(request: web.Request) -> web.Response:
+async def api_paste_create(request: web.Request) -> web.Response:
   app: web.Application = request.app
-  pgUtils: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
   headers = request.headers
 
   auth = headers.get("Authorization","")
@@ -152,7 +152,7 @@ async def apiPasteCreate(request: web.Request) -> web.Response:
   except ValueError:
     return web.Response(status=400,text="invalid visibility")
 
-  token = await pgUtils.verifyToken(token=auth)
+  token = await pg.verify_token(token=auth)
   
   paste = Paste(
     id="",
@@ -162,7 +162,7 @@ async def apiPasteCreate(request: web.Request) -> web.Response:
     title=data.get("title")
   )
 
-  newPaste,reason = await pgUtils.createNewPaste(paste,token)
+  newPaste,reason = await pg.create_new_paste(paste,token)
 
   if not newPaste:
     return web.Response(text=reason,status=400)
@@ -170,22 +170,24 @@ async def apiPasteCreate(request: web.Request) -> web.Response:
   return web.Response(status=200,text=newPaste.id)
 
 @routes.post("/api/paste/edit/")
-async def apiPasteEdit(request: web.Request) -> web.Response:
+async def api_paste_edit(request: web.Request) -> web.Response:
   app: web.Application = request.app
-  pgUtils: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
   headers = request.headers
 
   auth = headers.get("Authorization","")
   if not auth:
     return web.Response(status=401)
 
-  token = await pgUtils.verifyToken(headers.get("Authorization"))
+  token = await pg.verify_token(headers.get("Authorization"))
+  if not token:
+    return web.Response(status=401)
 
   data: dict = await request.json()
   if not data.get("id",""):
     return web.Response(status=400,body="missing paste id")
 
-  paste = await pgUtils.getPastesFromSearch(id=data.get("id"))
+  paste = await pg.getPastesFromSearch(id=data.get("id"))
   print(paste)
   if not paste:
     return web.Response(status=404,body="paste not found")
@@ -200,31 +202,31 @@ async def apiPasteEdit(request: web.Request) -> web.Response:
   except ValueError:
     pass
 
-  out = await pgUtils.editPaste(paste,token)
+  out = await pg.editPaste(paste,token)
   if not out:
     return web.Response(status=400)
   return web.Response(status=200,text=out.id)
 
 @routes.delete("/api/paste/delete/{tail:.*}")
-async def apiPasteDelete(request: web.Request) -> web.Response:
+async def api_paste_delete(request: web.Request) -> web.Response:
   pasteID: str = request.path.removeprefix("/api/paste/delete/")
 
   app: web.Application = request.app
-  pgUtils: PGUtils = app.pgUtils
+  pg: PGUtils = app.pg
   headers = request.headers
 
   auth = headers.get("Authorization","")
   if not auth:
     return web.Response(status=401)
 
-  token = await pgUtils.verifyToken(headers.get("Authorization"))
+  token = await pg.verify_token(headers.get("Authorization"))
 
-  paste = (await pgUtils.getPastesFromSearch(id=pasteID))
+  paste = (await pg.getPastesFromSearch(id=pasteID))
   if not paste:
     return web.Response(status=404,body="paste not found")
   paste = paste[0]
   
-  out = await pgUtils.deletePaste(paste,token)
+  out = await pg.delete_paste(paste,token)
 
   if out:
     return web.Response(status=200)

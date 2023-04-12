@@ -11,14 +11,14 @@ CREATE TABLE IF NOT EXISTS Users (
 
 CREATE TABLE IF NOT EXISTS Pastes (
   id TEXT,
-  Creator INT,
+  Creator BIGINT,
   Content BYTEA,
   Visibility INT,
   Title TEXT
 );
 
 CREATE TABLE IF NOT EXISTS APITokens (
-  Creator INT,
+  Creator BIGINT,
   Title TEXT,
   Perms INT,
   id TEXT

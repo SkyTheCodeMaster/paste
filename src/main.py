@@ -44,12 +44,14 @@ for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os
     routes = getRoutes(f"cogs.{cog}")
     app.add_routes(routes)
 
+app.add_routes([web.static("/","static")])
+
 async def startup():
   try:
-    conn = await asyncpg.connect(config["pg.url"],password=config["pg.password"])
+    pool = await asyncpg.create_pool(config["pg.url"],password=config["pg.password"])
     
-    pgUtils = PGUtils(conn)
-    app.pgUtils = pgUtils
+    pg = PGUtils(pool)
+    app.pg = pg
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -59,7 +61,7 @@ async def startup():
       config["srv.port"],
     )
     await site.start()
-    
+    print(f"Started server on http://{config['srv.host']}:{config['srv.port']}...\nPress ^C to close...")
     await asyncio.sleep(math.inf)
   except KeyboardInterrupt:
     pass
