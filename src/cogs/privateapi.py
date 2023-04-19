@@ -11,7 +11,41 @@ from utils.token import Token
 
 routes = web.RouteTableDef()
 
-emailRegex = re.compile(r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
+email_regex = re.compile(r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
+
+@routes.post("/api/login/")
+async def api_login(request: web.Request) -> web.Response:
+  """
+  Login and return an existing session token or create a new one.
+
+  `name` - username
+  `password` - password, if doesnt match sha256 then it will be hashed
+  `remember-me` - if true, expiry on the token will be set to 30 days
+
+  returns 200 OK and token cookie, or 401.
+  """
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  data: dict[str,str] = await request.json()
+  print(data)
+  if "name" not in data or "password" not in data:
+    return web.Response(status=400)
+  name = data["name"]
+  passwd = data["password"]
+  remember_me = data.get("password",False)
+  if not isHash(passwd):
+    passwd = hash(passwd,name)
+  user_token = await pg.verify_token(passwd)
+  if not user_token:
+    return web.Response(status=401)
+  async with app.pool.acquire() as conn:
+    record = await conn.fetchrow("SELECT Token FROM Users WHERE Id=$1;",user_token.owner.id)
+    token = record["token"]
+    response = web.Response(status=200)
+    max_age = 2592000 if remember_me else -1
+    response.set_cookie("token",token,max_age=max_age)
+    return response
 
 @routes.post("/api/internal/user/create/")
 async def api_internal_user_create(request: web.Request) -> web.Response:
@@ -35,14 +69,17 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
   name = data["name"]
   email = data["email"]
   passwd = data["password"]
-  if not emailRegex.match(email):
+  if not email_regex.match(email):
     return web.Response(status=400,body="email invalid")
 
   if not isHash(passwd):
     passwd = hash(passwd,name)
   user = User(name=name,password=passwd,email=email)
   new_id = await pg.create_new_user(user)
-  return web.Response(status=200,body=str(new_id))
+  new_token = await pg.generate_new_user_token(user)
+  response = web.Response(status=200,body=str(new_id))
+  response.set_cookie("token",new_token)
+  return response
 
 @routes.post("/api/internal/user/edit/")
 async def api_internal_user_edit(request: web.Request) -> web.Response:
@@ -51,7 +88,6 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   Post data (all optional):
   `name` - New name of the user
   `newpassword` - New password of the user, must be pre hashed. If not hashed, 400 is returned
-  `oldpassword` - Old password of the user, for authentication.
   `email` - New email of user, must be valid or 400 will be returned.
   
   Required header is the Authorization header of the user's hashed password.
@@ -62,12 +98,12 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   """
   app: web.Application = request.app
   pg: PGUtils = app.pg
+
+  token = await pg.handle_auth(request, strict_password=True)
+  if type(token) is web.Response:
+    return token
+
   data = await request.json()
-  if "oldpassword" not in data:
-    return web.Response(status=400,body="oldpassword parameter is missing")
-  token = await pg.verify_token(data["oldpassword"])
-  if not token or token.name != "PASSWORD":
-    return web.Response(status=400,body="invalid authorization")
   old_user = token.owner.clone()
   new_user = User(
     name="name" in data and data["name"] or old_user.name,
@@ -77,6 +113,11 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   )
 
   await pg.update_user(new_user)
+
+  new_token = await pg.generate_new_user_token(new_user)
+  response = web.Response(status=200)
+  response.set_cookie("token",new_token)
+  return response
 
 @routes.get("/api/internal/user/datadump")
 async def api_internal_user_datadump(request: web.Request) -> web.Response:
@@ -88,15 +129,10 @@ async def api_internal_user_datadump(request: web.Request) -> web.Response:
   """
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  token = await pg.verify_token(headers.get("Authorization"))
-  if not token or token.name != "PASSWORD":
-    return web.Response(status=401)
+  token = await pg.handle_auth(request,strict_password=True)
+  if type(token) is web.Response:
+    return token
 
   path = await pg.create_datadump(token.owner)
   return web.FileResponse(path)
@@ -117,13 +153,9 @@ async def api_internal_user_delete(request: web.Request) -> web.Response:
   pg: PGUtils = app.pg
   headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  token = await pg.verify_token(headers.get("Authorization"))
-  if not token or token.name != "PASSWORD":
-    return web.Response(status=401)
+  token = await pg.handle_auth(request,strict_password=True)
+  if type(token) is web.Response:
+    return token
 
   path = await pg.create_datadump(token.owner)
   await pg.delete_user(token.owner, delete_pastes=headers.get("delete-pastes",True))
@@ -145,15 +177,10 @@ async def api_internal_token_create(request: web.Request) -> web.Response:
   """
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  user_token = await pg.verify_token(headers.get("Authorization"))
-  if not user_token or user_token.name != "PASSWORD":
-    return web.Response(status=401)
+  user_token = await pg.handle_auth(request,strict_password=True)
+  if type(user_token) is web.Response:
+    return user_token
 
   data = await request.json()
   if not "name" in data or not "perms" in data or data["perms"] > 255:
@@ -182,15 +209,10 @@ async def api_internal_token_edit(request: web.Request) -> web.Response:
   """
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  user_token = await pg.verify_token(headers.get("Authorization"))
-  if not user_token or user_token.name != "PASSWORD":
-    return web.Response(status=401)
+  user_token = await pg.handle_auth(request,strict_password=True)
+  if type(user_token) is web.Response:
+    return user_token
 
   data = await request.json()
   if not "id" in data:
@@ -216,15 +238,10 @@ async def api_internal_token_delete(request: web.Request) -> web.Response:
   """
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  user_token = await pg.verify_token(headers.get("Authorization"))
-  if not user_token or user_token.name != "PASSWORD":
-    return web.Response(status=401)
+  user_token = await pg.handle_auth(request,strict_password=True)
+  if type(user_token) is web.Response:
+    return user_token
 
   data = await request.json()
   if not "id" in data:

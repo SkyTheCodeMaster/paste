@@ -1,5 +1,4 @@
 import asyncio
-import importlib.util
 import json
 import logging
 import math
@@ -7,9 +6,7 @@ import os
 
 import asyncpg
 import coloredlogs
-import django.template
 from aiohttp import web
-from django.conf import settings
 
 from utils.utils import getRoutes
 from utils.pg import PGUtils
@@ -41,6 +38,7 @@ app: web.Application = web.Application()
 disabledCogs = []
 for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os.path.join("cogs",f))]:
   if cog not in disabledCogs:
+    logging.info(f"Loading {cog}...")
     routes = getRoutes(f"cogs.{cog}")
     app.add_routes(routes)
 
@@ -52,6 +50,7 @@ async def startup():
     
     pg = PGUtils(pool)
     app.pg = pg
+    app.pool = pool
 
     runner = web.AppRunner(app)
     await runner.setup()

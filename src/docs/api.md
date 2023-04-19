@@ -4,11 +4,12 @@ Using API tokens is highly recommended, because if one is compromised, you can d
 
 Using a password as an API token is possible, to do so, the password must be hashed with SHA256 10 times, like:  
 ```lua
-local username = "username"
-local passwd = "password"
-local hash = ""
-for i=1,10 do
-  sha256.digest(username..passwd..hash)
+local function hash(username,passwd)
+  local hash = ""
+  for i=1,10 do
+    hash=sha256.digest(username..passwd..hash)
+  end
+  return hash
 end
 ```
 Or:  

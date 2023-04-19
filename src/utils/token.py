@@ -7,10 +7,10 @@ if TYPE_CHECKING:
   from utils.user import User
 
 class TokenPermissions:
-  createPaste = False
-  editPaste = False
-  deletePaste = False
-  viewPrivate = False
+  create_paste = False
+  edit_paste = False
+  delete_paste = False
+  view_private = False
 
 class Token:
   def __init__(self,*,name: str, owner: User, permissions: int, id: str) -> None:
@@ -22,10 +22,10 @@ class Token:
   @property
   def permissions(self) -> TokenPermissions:
     perms = TokenPermissions()
-    perms.createPaste = self.perms & 1 == 1
-    perms.editPaste   = self.perms & 2 == 2
-    perms.deletePaste = self.perms & 4 == 4
-    perms.viewPrivate = self.perms & 8 == 8
+    perms.create_paste = self.perms & 1 == 1
+    perms.edit_paste   = self.perms & 2 == 2
+    perms.delete_paste = self.perms & 4 == 4
+    perms.view_private = self.perms & 8 == 8
     return perms
     
   @property

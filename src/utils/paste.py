@@ -19,12 +19,14 @@ with open("config.json") as f:
   PUBLIC_URL = json.loads(f.read())["srv.publicurl"]
 
 class Paste:
-  def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str) -> None:
+  def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str, created: int = None, modified: int = None) -> None:
     self.id = id
     self.creator = creator
     self.data = data
     self.visibility = visibility
     self.title = title
+    self.created = created
+    self.modified = modified
   
   @property
   def url(self) -> str:
@@ -37,12 +39,15 @@ class Paste:
       "creator": self.creator,
       "visibility":self.visibility,
       "title":self.title,
+      "content": self.text_content,
+      "created": self.created,
+      "modified": self.modified
     }
     return json.dumps(out)
 
   async def get_creator(self,pgUtils: PGUtils) -> User:
     "Helper method to get the creator of the paste."
-    return await pgUtils.getUser(id=self.creator)
+    return await pgUtils.get_user(id=self.creator)
 
   @property
   def text_content(self) -> str:
@@ -63,13 +68,15 @@ class Paste:
       self.title = newTitle
 
   @classmethod
-  async def fromRecord(cls, record: Record) -> Self:
+  def from_record(cls, record: Record) -> Self:
     paste = cls(
       id=record["id"],
       creator=record["creator"],
-      content=record["content"],
+      data=record["content"],
       visibility=record["visibility"],
-      title=record["title"]
+      title=record["title"],
+      created=record["created"],
+      modified=record["modified"]
     )
     return paste
 
@@ -79,15 +86,19 @@ class Paste:
       creator=self.creator,
       data=self.data,
       visibility=self.visibility,
-      title=self.title
+      title=self.title,
+      created=self.created,
+      modified=self.modified
     )
     return newPaste
 
   async def update(self,pgUtils:PGUtils) -> Self:
-    paste = await pgUtils.getPastesFromSearch(id=self.id)[0]
+    paste = (await pgUtils.get_pastes_from_search(id=self.id))[0]
     self.id = paste.id
     self.creator= paste.creator
     self.data = paste.data
     self.visibility = paste.visibility
     self.title = paste.title
+    self.created = paste.created
+    self.modified = paste.modified
     return self

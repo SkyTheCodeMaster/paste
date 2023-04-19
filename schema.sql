@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS Users (
   Username TEXT,
   Password TEXT,
   Email TEXT,
-  id BIGSERIAL
+  id BIGSERIAL,
+  Token TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Pastes (
@@ -14,7 +15,9 @@ CREATE TABLE IF NOT EXISTS Pastes (
   Creator BIGINT,
   Content BYTEA,
   Visibility INT,
-  Title TEXT
+  Title TEXT,
+  Created BIGINT,
+  Modified BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS APITokens (

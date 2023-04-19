@@ -1,0 +1,39 @@
+.sidebar {
+  float: right;
+  padding: 20px;
+  /*background: grey;
+  border-radius: 5px;*/
+}
+
+.sidebar p.header {
+  padding: 0px;
+}
+
+.sidebar div.paste {
+  border-color:#04AA6D;
+  border-style: solid;
+  border-radius: 5px;
+  border-width: 3px;
+  margin: 5px;
+}
+
+.sidebar div.paste hr {
+  color: #04AA6D;
+  background-color: #04AA6D;
+  margin-left: 0px;
+  margin-right: 0px;
+  width: 100%;
+  height: 2px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.sidebar div.paste a.title {
+  margin: 4px;
+  text-decoration: none;
+  color: #c03;
+}
+
+.sidebar div.paste p.info {
+  margin: 2px;
+}

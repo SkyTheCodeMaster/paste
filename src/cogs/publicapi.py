@@ -24,7 +24,7 @@ async def apiPasteGet(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  paste: Paste = await pg.getPastesFromSearch(id=pasteID)
+  paste: Paste = await pg.get_pastes_from_search(id=pasteID)
 
   if not paste:
     return web.Response(status=404)
@@ -32,13 +32,18 @@ async def apiPasteGet(request: web.Request) -> web.Response:
   if paste.visibility == Visibility.PRIVATE.value:
     headers = request.headers
     auth = headers.get("Authorization","")
+    if not auth:
+      if "token" in request.cookies:
+        auth = request.cookies["token"]
+      else:
+        return web.Response(status=401)
     token: Token = await pg.verify_token(auth)
-    if token and token.creator == paste.creator and token.permissions.viewPrivate:
+    if token and token.creator == paste.creator and token.permissions.view_private:
       return web.Response(text=paste.json,content_type="application/json")
     else:
       return web.Response(status=401)
   else:
-    user: User = await paste.getCreator(pg)
+    user: User = await paste.get_creator(pg)
     paste.creator = user.name
     return web.Response(text=paste.json,content_type="application/json")
 
@@ -49,21 +54,19 @@ async def api_paste_raw_get(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  paste: Paste = await pg.getPastesFromSearch(id=pasteID)
+  paste: Paste = await pg.get_pastes_from_search(id=pasteID)
 
   if not paste:
     return web.Response(status=404)
   paste = paste[0]
   if paste.visibility == Visibility.PRIVATE.value:
-    headers = request.headers
-    auth = headers.get("Authorization","")
-    token: Token = await pg.verify_token(auth)
-    if token and token.creator == paste.creator and token.permissions.viewPrivate:
-      return web.Response(text=paste.textContent,content_type="text/plain")
+    token = await pg.handle_auth(request,no_exist_ok=True)
+    if token and token.creator == paste.creator and token.permissions.view_private:
+      return web.Response(text=paste.text_content,content_type="text/plain")
     else:
       return web.Response(status=401)
   else:
-    return web.Response(text=paste.textContent,content_type="text/plain")
+    return web.Response(text=paste.text_content,content_type="text/plain")
 
 @routes.get("/api/paste/search/")
 async def api_paste_search(request: web.Request) -> web.Response:
@@ -88,13 +91,14 @@ async def api_paste_search(request: web.Request) -> web.Response:
   if query.get("title"):title=query.get("title")
   if query.get("creator"):creator=query.get("creator")
 
-  headers = request.headers
-  auth = headers.get("Authorization","")
-  token = await pg.verify_token(auth)
+  token = await pg.handle_auth(request,no_exist_ok=True)
+  if type(token) is web.Response:
+    return token
+
   if title: regex: re.Pattern = re.compile(title.lower())
 
   async def search(paste: Paste,limit=limit,offset=offset) -> bool:
-    user = await pg.getUser(id=paste.creator)
+    user = await pg.get_user(id=paste.creator)
     if not token:
       if title and creator:
         return regex.findall(paste.title.lower()) and user.name.lower() == creator.lower() and paste.visibility == Visibility.PUBLIC.value
@@ -104,7 +108,7 @@ async def api_paste_search(request: web.Request) -> web.Response:
         return user.name.lower() == creator.lower() and paste.visibility == Visibility.PUBLIC.value
     else:
       tokenCreator = token.owner
-      if user == tokenCreator and token.permissions.viewPrivate:
+      if user == tokenCreator and token.permissions.view_private:
         if title and creator:
           return regex.findall(paste.title.lower()) and user.name.lower() == creator.lower()
         elif title:
@@ -137,11 +141,10 @@ async def api_paste_search(request: web.Request) -> web.Response:
 async def api_paste_create(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
+  token = await pg.handle_auth(request)
+  if type(token) is web.Response:
+    return token
   
   data: dict = await request.json()
   if not data.get("title") or not data.get("content") or not data.get("visibility"):
@@ -151,8 +154,6 @@ async def api_paste_create(request: web.Request) -> web.Response:
     int(data.get("visibility"))
   except ValueError:
     return web.Response(status=400,text="invalid visibility")
-
-  token = await pg.verify_token(token=auth)
   
   paste = Paste(
     id="",
@@ -175,24 +176,20 @@ async def api_paste_edit(request: web.Request) -> web.Response:
   pg: PGUtils = app.pg
   headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
-
-  token = await pg.verify_token(headers.get("Authorization"))
-  if not token:
-    return web.Response(status=401)
+  token = await pg.handle_auth(request)
+  if type(token) is web.Response:
+    return token
 
   data: dict = await request.json()
   if not data.get("id",""):
     return web.Response(status=400,body="missing paste id")
 
-  paste = await pg.getPastesFromSearch(id=data.get("id"))
+  paste = await pg.get_pastes_from_search(id=data.get("id"))
   print(paste)
   if not paste:
     return web.Response(status=404,body="paste not found")
   paste = paste[0]
-  if paste.creator != token.owner.id:
+  if paste.creator != token.owner.id or not token.permissions.edit_paste:
     return web.Response(status=401,body="invalid token")
 
   paste.title = data.get("title",paste.title)
@@ -202,26 +199,31 @@ async def api_paste_edit(request: web.Request) -> web.Response:
   except ValueError:
     pass
 
-  out = await pg.editPaste(paste,token)
+  out = await pg.edit_paste(paste,token)
   if not out:
     return web.Response(status=400)
   return web.Response(status=200,text=out.id)
 
-@routes.delete("/api/paste/delete/{tail:.*}")
+@routes.post("/api/paste/delete/")
 async def api_paste_delete(request: web.Request) -> web.Response:
-  pasteID: str = request.path.removeprefix("/api/paste/delete/")
 
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
-  auth = headers.get("Authorization","")
-  if not auth:
-    return web.Response(status=401)
+  token = await pg.handle_auth(request)
+  if type(token) is web.Response:
+    return token
 
-  token = await pg.verify_token(headers.get("Authorization"))
+  if not token.permissions.delete_paste:
+    return web.Response(status=403)
 
-  paste = (await pg.getPastesFromSearch(id=pasteID))
+  data = await request.json()
+  if "id" not in data:
+    return web.Response(status=400)
+
+  pasteID = data["id"]
+
+  paste = (await pg.get_pastes_from_search(id=pasteID))
   if not paste:
     return web.Response(status=404,body="paste not found")
   paste = paste[0]
