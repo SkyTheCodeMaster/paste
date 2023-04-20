@@ -1,0 +1,13 @@
+<div class="main_paste">
+  <div class="header">
+    <p>{{ paste.title }} {{ paste.size }}</p>
+  </div>
+  <hr>
+  <div class="content">
+    <ol>
+    {% for line in paste.lines %}
+      <li>{{ line }}</li>
+    {% endfor %}
+    </ol>
+  </div>
+</div>

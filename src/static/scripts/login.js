@@ -11,5 +11,7 @@ function login() {
     "password": password,
   };
   request.send(JSON.stringify(params));
-  request.onload = function() {};
+  request.onload = function() {
+    window.location.replace("/");
+  };
 }

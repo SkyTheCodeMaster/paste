@@ -42,8 +42,6 @@ for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os
     routes = getRoutes(f"cogs.{cog}")
     app.add_routes(routes)
 
-app.add_routes([web.static("/","static")])
-
 async def startup():
   try:
     pool = await asyncpg.create_pool(config["pg.url"],password=config["pg.password"])

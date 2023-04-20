@@ -28,7 +28,6 @@ async def api_login(request: web.Request) -> web.Response:
   pg: PGUtils = app.pg
 
   data: dict[str,str] = await request.json()
-  print(data)
   if "name" not in data or "password" not in data:
     return web.Response(status=400)
   name = data["name"]
@@ -44,7 +43,7 @@ async def api_login(request: web.Request) -> web.Response:
     token = record["token"]
     response = web.Response(status=200)
     max_age = 2592000 if remember_me else -1
-    response.set_cookie("token",token,max_age=max_age)
+    response.set_cookie("token",token,max_age=max_age,samesite="Lax")
     return response
 
 @routes.post("/api/internal/user/create/")
@@ -76,10 +75,27 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
     passwd = hash(passwd,name)
   user = User(name=name,password=passwd,email=email)
   new_id = await pg.create_new_user(user)
-  new_token = await pg.generate_new_user_token(user)
-  response = web.Response(status=200,body=str(new_id))
-  response.set_cookie("token",new_token)
-  return response
+  if type(new_id) is int:
+    new_token = await pg.generate_new_user_token(user)
+    response = web.Response(status=200,body=str(new_id))
+    response.set_cookie("token",new_token)
+    return response
+  else:
+    return web.Response(status=400,body="username already registered")
+
+@routes.post("/api/internal/user/exists")
+async def api_internal_user_exists(request: web.Request) -> web.Response:
+  "Checks if a user exists. Only required post data is `name`."
+  app: web.Application = request.app
+  data = await request.json()
+  if "name" not in data:
+    return web.Response(status=400,body="name parameter is missing")
+  async with app.pool.acquire() as conn:
+    exists = (await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM Users WHERE Username ILIKE $1 );",data["name"]))["exists"]
+    if exists:
+      return web.Response(status=200,body="true")
+    else:
+      return web.Response(status=200,body="false")
 
 @routes.post("/api/internal/user/edit/")
 async def api_internal_user_edit(request: web.Request) -> web.Response:

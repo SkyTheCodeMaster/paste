@@ -28,6 +28,8 @@ with open("config.json") as f:
   PASTE_ID_LENGTH   = config["paste.id_length"]
   TOKEN_ID_LENGTH   = config["token.id_length"]
   USER_TOKEN_LENGTH = config["user.token_length"]
+  USERNAME_MIN_LENGTH = config["user.name_min"]
+  USERNAME_MAX_LENGTH = config["user.name_max"]
 
 class PGUtils:
   def __init__(self, pool: asyncpg.Pool = None):
@@ -77,9 +79,15 @@ class PGUtils:
 
   async def create_new_user(self,user: User) -> int:
     "Create a new user, and return the ID of the user."
+    if not USERNAME_MIN_LENGTH <= len(user.name) <= USERNAME_MAX_LENGTH:
+      return False
     async with self.pool.acquire() as conn:
-      record = await conn.fetchrow("INSERT INTO Users (Username, Password, Email) VALUES ($1, $2, $3)", user.name, user.password, user.email)
-      return record["id"]
+      exists = await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM Users WHERE Username ILIKE $1);",user.name)
+      if not exists["exists"]:
+        record = await conn.fetchrow("INSERT INTO Users (Username, Password, Email) VALUES ($1, $2, $3)", user.name, user.password, user.email)
+        return record["id"]
+      else:
+        return False
   
   async def update_user(self,user: User) -> bool:
     "Update attributes of a user."

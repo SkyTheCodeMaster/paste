@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/sidebar.css">
     <script src="/scripts/login.js" async></script>
+    <script src="/scripts/common.js" async></script>
   </head>
   <body>
     {{ navbar | safe }}
@@ -40,6 +41,10 @@
       <input type="text" id="usernameInput" name="username"><br><br>
       <label for="password">Password:</label><br>
       <input type="password" id="passwordInput" name="password"><br><br>
+      <div class="div_remember_me">
+        <input type="checkbox" id="rememberme" name="rememberme">
+        <label for="rememberme"> Remember Me</label><br><br>
+      </div>
       <a onclick="login()" class="loginbtn">Log in</a>
     </div>
   </body>

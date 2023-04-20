@@ -1,0 +1,42 @@
+.main_paste {
+  border: 3px solid #04aa6d;
+  border-radius: 3px;
+  margin: 15px;
+  width: 70%;
+  background-color: #eee;
+}
+
+.main_paste hr {
+  margin: 1px;
+  color: #04aa6d;
+  background-color: #eee;
+}
+
+.main_paste div.header {
+  font-size: 14px;
+  padding: 3px;
+  background-color: #ccc;
+}
+
+.main_paste div.header p {
+  margin: 0px;
+}
+
+.main_paste div.content {
+  background-color: #eee;
+  list-style-type: decimal-leading-zero;
+}
+
+.main_paste div.content p {
+  font-family: monospace;
+  font-style: normal;
+}
+
+.main_paste div.content li::marker {
+  color: #acacac;
+  background-color: #ccc;
+}
+
+.main_paste div.content li::before {
+  background-color: #ccc;
+}

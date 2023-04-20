@@ -40,6 +40,10 @@ input[type=text], input[type=password] {
   user-select: none;
 }
 
+.account_login div.div_remember_me {
+  margin: auto;
+}
+
 .account_login a.loginbtn:hover {
   background-color: #06bb6f;
 }
