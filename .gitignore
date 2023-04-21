@@ -4,6 +4,7 @@ lib64
 include/*
 bin/*
 pyvenv.cfg
+share/*
 
 src/config.json
 

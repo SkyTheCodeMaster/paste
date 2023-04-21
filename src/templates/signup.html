@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sky Paste</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/login.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <script src="/scripts/login.js" async></script>
+    <script src="/scripts/common.js" async></script>
+  </head>
+  <body>
+    {{ navbar | safe }}
+
+    <!--Do the "latest pastes" section-->
+    <div class="sidebar">
+      {% if self_pastes %}
+        <p class="header">My Pastes</p>
+        {% for paste in self_pastes %}
+          <div class="paste">
+            <a class="title" href="/{{ paste.id }}">{{ paste.name }}</a>
+            <hr>
+            <p class="info">{{ paste.date }} | {{ paste.size }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+      <p class="header">Public Pastes</p>
+      {% for paste in public_pastes %}
+        <div class="paste">
+          <a class="title" href="/{{ paste.id }}">{{ paste.name }}</a>
+          <hr>
+          <p class="info">{{ paste.date }} | {{ paste.size }}</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!--Actual login page-->
+    <div class="account_login">
+      <h1>Sign up</h1>
+      <label for="username">Username:</label><br>
+      <input type="text" id="usernameInput" name="username"><br><br>
+      <p class="bad_input" id="username_already_exists">Username already registered!</p>
+      <p class="bad_input" id="username_length_bad"></p>
+      <label for="username">Email:</label><br>
+      <input type="text" id="emailInput" name="email"><br><br>
+      <p class="bad_input" id="email_invalid">Email invalid!</p>
+      <label for="password">Password:</label><br>
+      <input type="password" id="passwordInput" name="password"><br><br>
+      <a onclick="signup()" class="loginbtn">Sign Up</a>
+    </div>
+  </body>
+</html>
