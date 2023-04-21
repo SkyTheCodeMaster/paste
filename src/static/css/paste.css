@@ -4,6 +4,7 @@
   margin: 15px;
   width: 70%;
   background-color: #eee;
+  display: grid;
 }
 
 .main_paste hr {
@@ -16,6 +17,14 @@
   font-size: 14px;
   padding: 3px;
   background-color: #ccc;
+}
+
+.main_paste div.header div.left {
+  float: left;
+}
+
+.main_paste div.header div.right {
+  float: right;
 }
 
 .main_paste div.header p {

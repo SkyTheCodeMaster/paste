@@ -48,7 +48,7 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> tuple[list[di
         "name":paste.title,
         "id": paste.id,
         "date":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
-        "size":humanize.naturalsize(len(paste.data))
+        "size":humanize.naturalsize(len(paste.data),gnu=True)
       } 
       for paste 
       in pastes
@@ -62,7 +62,7 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> tuple[list[di
           "name":paste.title,
           "id": paste.id,
           "date":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
-          "size":humanize.naturalsize(len(paste.data))
+          "size":humanize.naturalsize(len(paste.data),gnu=True)
         } 
         for paste 
         in pastes
@@ -100,6 +100,24 @@ async def get_index(request: web.Request) -> web.Response:
   rendered = templates["index.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
+@routes.get("/login")
+async def get_index(request: web.Request) -> web.Response:
+  # Load the index.html template
+  public_pastes, self_pastes = await prepare_sidebar(request)
+  navbar = await prepare_navbar(request)
+  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+  rendered = templates["login.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
+
+@routes.get("/signup")
+async def get_index(request: web.Request) -> web.Response:
+  # Load the index.html template
+  public_pastes, self_pastes = await prepare_sidebar(request)
+  navbar = await prepare_navbar(request)
+  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+  rendered = templates["signup.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
+
 @routes.get("/{tail:\w+}")
 async def get_paste(request: web.Request) -> web.Response:
   pasteID: str = request.path.removeprefix("/")
@@ -110,17 +128,18 @@ async def get_paste(request: web.Request) -> web.Response:
 
   text_content: Union[str,False] = ""
 
-  if not paste:
-    return web.Response(status=404)
-  paste = paste[0]
-  if paste.visibility == Visibility.PRIVATE.value:
-    token = await pg.handle_auth(request,no_exist_ok=True)
-    if token and token.creator == paste.creator and token.permissions.view_private:
-      text_content = paste.text_content
+  if paste:
+    paste = paste[0]
+    if paste.visibility == Visibility.PRIVATE.value:
+      token = await pg.handle_auth(request,no_exist_ok=True)
+      if token and token.creator == paste.creator and token.permissions.view_private:
+        text_content = paste.text_content
+      else:
+        text_content = False
     else:
-      text_content = False
+      text_content = paste.text_content
   else:
-    text_content = paste.text_content
+    text_content = False
 
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
@@ -132,23 +151,14 @@ async def get_paste(request: web.Request) -> web.Response:
       "size": humanize.naturalsize(len(paste.data)),
     }
   else:
-    pass
-  print(_ctx_dict)
+    _ctx_dict["paste"] = {
+      "title": "The paste you are looking for either does not exist, or is private."
+    }
+
   ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
   ctx_dict["paste"] = sup_templates["paste.html"].render(Context(_ctx_dict))
 
   return web.Response(body=templates["paste.html"].render(Context(ctx_dict)),content_type="text/html")
-
-
-@routes.get("/login")
-async def get_index(request: web.Request) -> web.Response:
-  # Load the index.html template
-  public_pastes, self_pastes = await prepare_sidebar(request)
-  navbar = await prepare_navbar(request)
-  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
-  rendered = templates["login.html"].render(Context(ctx_dict))
-  return web.Response(body=rendered,content_type="text/html")
-
 
 routes.static("/","static")
 

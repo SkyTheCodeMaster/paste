@@ -35,16 +35,35 @@ coloredlogs.install(
 
 app: web.Application = web.Application()
 
+@web.middleware
+async def error_middleware(request, handler):
+  try:
+    response = await handler(request)
+    if response.status != 404:
+      return response
+    message = response.message
+  except web.HTTPException as ex:
+    if ex.status != 404:
+      raise
+    message = ex.reason
+  return web.json_response({'error': message})
+
+LOG = logging.getLogger(__name__)
+
 disabledCogs = []
 for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os.path.join("cogs",f))]:
   if cog not in disabledCogs:
-    logging.info(f"Loading {cog}...")
+    LOG.info(f"Loading {cog}...")
     routes = getRoutes(f"cogs.{cog}")
     app.add_routes(routes)
 
 async def startup():
   try:
-    pool = await asyncpg.create_pool(config["pg.url"],password=config["pg.password"])
+    pool = await asyncpg.create_pool(
+      config["pg.url"],
+      password=config["pg.password"],
+      timeout=config["pg.timeout"]
+    )
     
     pg = PGUtils(pool)
     app.pg = pg
@@ -62,8 +81,11 @@ async def startup():
     await asyncio.sleep(math.inf)
   except KeyboardInterrupt:
     pass
+  except asyncio.exceptions.TimeoutError:
+    LOG.error("PostgresQL connection timeout. Check the connection arguments!")
   finally:
-    await site.stop()
+    try: await site.stop() 
+    except: pass
 
 if __name__ == "__main__":
   asyncio.run(startup())

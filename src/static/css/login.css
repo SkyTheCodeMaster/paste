@@ -44,6 +44,13 @@ input[type=text], input[type=password] {
   margin: auto;
 }
 
+.account_login p.bad_input {
+  color: red;
+  font-size: 10px;
+  display: none;
+  margin: auto;
+}
+
 .account_login a.loginbtn:hover {
   background-color: #06bb6f;
 }
