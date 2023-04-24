@@ -46,11 +46,27 @@ input[type=text], input[type=password] {
 
 .account_login p.bad_input {
   color: red;
+  position: relative;
   font-size: 10px;
   display: none;
-  margin: auto;
+  margin: 5px auto;
 }
 
-.account_login a.loginbtn:hover {
+.account_login a.loginbtn:not(.account_login a.disabled):hover {
   background-color: #06bb6f;
+  cursor: pointer;
+}
+
+.account_login a.disabled {
+  border-color: #888;
+  border-radius: 5px;
+  border-style:solid;
+  background-color:#777;
+  width: 50%;
+  margin: auto;
+  cursor: not-allowed;
+  display:inline-block;
+  text-align: center;
+  color: #fff;
+  user-select: none;
 }

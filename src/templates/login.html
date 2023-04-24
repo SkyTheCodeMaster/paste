@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="/css/sidebar.css">
     <script src="/scripts/login.js" async></script>
     <script src="/scripts/common.js" async></script>
+    <div 
+    data-min-length={{ config.USERNAME_MIN_LENGTH }}
+    data-max-length={{ config.USERNAME_MAX_LENGTH }}
+    id="username_data"
+    ></div>
   </head>
   <body>
     {{ navbar | safe }}
@@ -39,13 +44,14 @@
       <h1>Sign in</h1>
       <label for="username">Username:</label><br>
       <input type="text" id="usernameInput" name="username"><br><br>
+      <p class="bad_input" id="username_length_bad"></p>
       <label for="password">Password:</label><br>
       <input type="password" id="passwordInput" name="password"><br><br>
       <div class="div_remember_me">
         <input type="checkbox" id="rememberme" name="rememberme">
         <label for="rememberme"> Remember Me</label><br><br>
       </div>
-      <a onclick="login()" class="loginbtn">Log in</a>
+      <a onclick="login()" class="loginbtn" id="loginbtn">Log in</a>
     </div>
   </body>
 </html>

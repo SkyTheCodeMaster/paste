@@ -6,8 +6,13 @@
     <link rel="stylesheet" href="/css/login.css">
     <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/sidebar.css">
-    <script src="/scripts/login.js" async></script>
+    <script src="/scripts/signup.js" async></script>
     <script src="/scripts/common.js" async></script>
+    <div 
+    data-min-length={{ config.USERNAME_MIN_LENGTH }}
+    data-max-length={{ config.USERNAME_MAX_LENGTH }}
+    id="username_data"
+    ></div>
   </head>
   <body>
     {{ navbar | safe }}
@@ -37,15 +42,19 @@
     <!--Actual login page-->
     <div class="account_login">
       <h1>Sign up</h1>
-      <label for="username">Username:</label><br>
-      <input type="text" id="usernameInput" name="username"><br><br>
+      <label for="username">Username:</label>
+      <input type="text" id="usernameInput" name="username">
       <p class="bad_input" id="username_already_exists">Username already registered!</p>
       <p class="bad_input" id="username_length_bad"></p>
-      <label for="username">Email:</label><br>
-      <input type="text" id="emailInput" name="email"><br><br>
+      <label for="username">Email:</label>
+      <input type="text" id="emailInput" name="email">
       <p class="bad_input" id="email_invalid">Email invalid!</p>
-      <label for="password">Password:</label><br>
-      <input type="password" id="passwordInput" name="password"><br><br>
+      <label for="password">Password:</label>
+      <input type="password" id="passwordInput" name="password">
+      <div class="div_remember_me">
+        <input type="checkbox" id="rememberme" name="rememberme">
+        <label for="rememberme"> Remember Me</label><br><br>
+      </div>
       <a onclick="signup()" class="loginbtn">Sign Up</a>
     </div>
   </body>

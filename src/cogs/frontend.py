@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 from typing import TYPE_CHECKING
 
 import humanize
 from aiohttp import web
 from django.conf import settings as django_settings
+from django import setup as django_setup
 from django.template import Context, Engine
 from utils.paste import Paste
 from utils.token import Token
@@ -19,8 +21,15 @@ if TYPE_CHECKING:
   from utils.pg import PGUtils
 
 django_settings.configure()
+django_setup()
 
 routes = web.RouteTableDef()
+
+with open("config.json") as f:
+  contents = f.read()
+  config = json.loads(contents)
+  USERNAME_MIN_LENGTH = config["user.name_min"]
+  USERNAME_MAX_LENGTH = config["user.name_max"]
 
 # Load all of the templates in the static folder.
 engine = Engine()
@@ -37,12 +46,18 @@ for file in [f for f in os.listdir("templates/supporting") if os.path.isfile(os.
     tmpl = engine.from_string(f.read())
     sup_templates[file] = tmpl
 
+latest_pastes_cache: list[Paste] = [] # A list of public Pastes for the sidebar.
+latest_pastes_cache_age: int = 0
+
 async def prepare_sidebar(request: web.Request, count: int = 8) -> tuple[list[dict[str,str]],Union[list[dict[str,str]],False]]:
+  global latest_pastes_cache_age, latest_pastes_cache
   app: web.Application = request.app
   pool: asyncpg.Pool = app.pool
   async with pool.acquire() as conn:
-    records = await conn.fetch("SELECT * FROM Pastes WHERE Visibility = 1 ORDER BY Created DESC LIMIT $1",count)
-    pastes: list[Paste] = [Paste.from_record(record) for record in records]
+    current_time = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+    if current_time > latest_pastes_cache_age + 30:
+      latest_pastes_cache = [Paste.from_record(record) for record in await conn.fetch("SELECT * FROM Pastes WHERE Visibility = 1 ORDER BY Created DESC LIMIT $1",count)]
+      latest_pastes_cache_age = current_time + 30
     public_pastes: list[dict[str,str]] = [
       {
         "name":paste.title,
@@ -51,7 +66,7 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> tuple[list[di
         "size":humanize.naturalsize(len(paste.data),gnu=True)
       } 
       for paste 
-      in pastes
+      in latest_pastes_cache
     ]
     token = await request.app.pg.handle_auth(request,strict_password=True,no_exist_ok=True)
     if type(token) is Token:
@@ -105,7 +120,15 @@ async def get_index(request: web.Request) -> web.Response:
   # Load the index.html template
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
-  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+  ctx_dict: dict[str,Any] = {
+    "navbar":navbar,
+    "public_pastes":public_pastes,
+    "self_pastes":self_pastes,
+    "config": {
+      "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
+      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH
+    }
+  }
   rendered = templates["login.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
@@ -114,7 +137,15 @@ async def get_index(request: web.Request) -> web.Response:
   # Load the index.html template
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
-  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+  ctx_dict: dict[str,Any] = {
+    "navbar":navbar,
+    "public_pastes":public_pastes,
+    "self_pastes":self_pastes,
+    "config": {
+      "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
+      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH
+    }
+  }
   rendered = templates["signup.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 

@@ -53,6 +53,7 @@
   color: black;
   padding: 12px 16px;
   text-decoration: none;
+  cursor: pointer;
   right: 0px;
   text-align: left;
 }
