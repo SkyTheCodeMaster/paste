@@ -17,10 +17,10 @@ from utils.paste import Paste
 from utils.token import Token
 from utils.user import User
 from utils.utils import hash
+from aiohttp import web
 
 if TYPE_CHECKING:
   from typing import List, Union
-  from aiohttp import web
 
 with open("config.json") as f:
   contents = f.read()
@@ -84,8 +84,9 @@ class PGUtils:
     async with self.pool.acquire() as conn:
       exists = await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM Users WHERE Username ILIKE $1);",user.name)
       if not exists["exists"]:
-        record = await conn.fetchrow("INSERT INTO Users (Username, Password, Email) VALUES ($1, $2, $3)", user.name, user.password, user.email)
-        return record["id"]
+        await conn.execute("INSERT INTO Users (Username, Password, Email) VALUES ($1, $2, $3)", user.name, user.password, user.email)
+        user = await self.get_user(name=user.name)
+        return user.id
       else:
         return False
   

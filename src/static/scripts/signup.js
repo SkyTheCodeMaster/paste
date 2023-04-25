@@ -6,6 +6,27 @@ var usern_bad = false;
 function signup() {
   if (email_bad | usern_bad) { return; }
   
+  var username = document.getElementById("usernameInput").value;
+  var email = document.getElementById("emailInput").value;
+  var password = document.getElementById("passwordInput").value;
+  var rememberme = document.getElementById("rememberme").value;
+
+  var packet = {
+    "name":username,
+    "email":email,
+    "password":password,
+    "rememberme":rememberme,
+  };
+
+  var request = new XMLHttpRequest();
+  request.open("POST","api/internal/user/create/");
+  request.setRequestHeader("Content-Type","application/json");
+  request.send(JSON.stringify(packet));
+  request.onload = function() {
+    if (request.status == 200) {
+      window.location.replace("/");
+    }
+  }
 }
 
 function format(_format) {
@@ -24,6 +45,7 @@ function format(_format) {
 window.onload = function() {
   const USERNAME_MIN_LENGTH = document.getElementById("username_data").getAttribute("data-min-length");
   const USERNAME_MAX_LENGTH = document.getElementById("username_data").getAttribute("data-max-length");
+  var login_button = document.getElementById("loginbtn");
   try {
     var usernameInput = document.getElementById("usernameInput");
     usernameInput.addEventListener("keyup", function() {
@@ -32,9 +54,10 @@ window.onload = function() {
       console.log(length);
       var username_length_warn = document.getElementById("username_length_bad");
       var username_exists_warn = document.getElementById("username_already_exists");
-      var btn = document.getElementById("loginbtn");
       if (USERNAME_MIN_LENGTH > length | length > USERNAME_MAX_LENGTH) {
         username_exists_warn.style.display = "none";
+        usern_bad = true;
+        login_button.classList.add("disabled");
         if (USERNAME_MIN_LENGTH > length) {
           username_length_warn.innerHTML = format("Username is too short, minimum {0}!",USERNAME_MIN_LENGTH);
           username_length_warn.style.display = "block";
@@ -44,6 +67,10 @@ window.onload = function() {
         }
       } else {
         username_length_warn.style.display = "none";
+        usern_bad = false;
+        if (!email_bad) {
+          login_button.classList.remove("disabled");
+        }
         // This probably isn't the best way to do it, but who cares!
         // XMLHttpRequest for everyone!
         var request = new XMLHttpRequest()
@@ -69,9 +96,15 @@ window.onload = function() {
       var text = emailInput.value;
       var popup = document.getElementById("email_invalid");
       if (!email_regex.test(text)) {
+        email_bad = true;
+        login_button.classList.add("disabled")
         popup.style.display = "block";
       } else {
+        email_bad = false;
         popup.style.display = "none";
+        if (!usern_bad) {
+          login_button.classList.remove("disabled");
+        }
       }
     });
   } catch {};

@@ -2,10 +2,11 @@ var bad_input_username = false;
 
 // Handle when the `login` button is clicked.
 function login() {
-  if (bad_input) { return; }
+  if (bad_input_username) { return; }
   // Grab the values
   var username = document.getElementById("usernameInput").value;
   var password = document.getElementById("passwordInput").value;
+  var remember = document.getElementById("rememberme").value;
   
   // Instantiate a request
   var request = new XMLHttpRequest();
@@ -15,12 +16,15 @@ function login() {
   var params = {
     "name": username,
     "password": password,
+    "rememberme":remember,
   };
   // Send the information. The response sets a cookie which is shown to the user
   // when the view is moved to /
   request.send(JSON.stringify(params));
   request.onload = function() {
-    window.location.replace("/");
+    if (request.status == 200) {
+      window.location.replace("/");
+    }
   };
 }
 
@@ -65,4 +69,12 @@ window.onload = function() {
       }
     });
   } catch {};
+
+  password_input = document.getElementById("passwordInput");
+  password_input.addEventListener("keyup",function(e) {
+    console.log(e,e.which);
+    if (e.which == 13) {
+      login();
+    }
+  })
 }

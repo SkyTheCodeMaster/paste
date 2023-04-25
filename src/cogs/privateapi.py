@@ -32,7 +32,7 @@ async def api_login(request: web.Request) -> web.Response:
     return web.Response(status=400)
   name = data["name"]
   passwd = data["password"]
-  remember_me = data.get("password",False)
+  remember_me = data.get("rememberme",False)
   if not isHash(passwd):
     passwd = hash(passwd,name)
   user_token = await pg.verify_token(passwd)
@@ -68,6 +68,7 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
   name = data["name"]
   email = data["email"]
   passwd = data["password"]
+  remember_me = data.get("rememberme",False)
   if not email_regex.match(email):
     return web.Response(status=400,body="email invalid")
 
@@ -75,10 +76,12 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
     passwd = hash(passwd,name)
   user = User(name=name,password=passwd,email=email)
   new_id = await pg.create_new_user(user)
+  user.id = new_id
   if type(new_id) is int:
     new_token = await pg.generate_new_user_token(user)
     response = web.Response(status=200,body=str(new_id))
-    response.set_cookie("token",new_token)
+    max_age = 2592000 if remember_me else -1
+    response.set_cookie("token",new_token,max_age=max_age,samesite="Lax")
     return response
   else:
     return web.Response(status=400,body="username already registered")
