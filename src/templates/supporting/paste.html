@@ -4,7 +4,13 @@
       <p>{{ paste.title }} | {{ paste.size }}</p>
     </div>
     <div class="right">
-      <p>right</p>
+      <a onclick="copy()" alt="Copy the raw paste text into the clipboard.">Copy</a>
+      <a href="/raw/{{ paste.id }}" alt="Open the raw paste text in a new tab." target="_blank">Raw</a>
+      <a href="/dl/{{ paste.id }}" alt="Download the paste content in a text file.">Download</a>
+      {% if authorized %}
+        <a onclick="delete_paste()">Delete</a>
+        <a href="/edit/{{ paste.id }}">Edit</a>
+      {% endif %}
     </div>
   </div>
   <hr>

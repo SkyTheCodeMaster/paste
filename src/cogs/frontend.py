@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import humanize
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
   import asyncpg
   from django.template import Template
   from utils.pg import PGUtils
+  from utils.user import User
 
 django_settings.configure()
 django_setup()
@@ -149,7 +151,53 @@ async def get_index(request: web.Request) -> web.Response:
   rendered = templates["signup.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
-@routes.get("/{tail:\w+}")
+@routes.get("/dl/{tail:\w+$}")
+async def get_raw_paste(request: web.Request) -> web.Response:
+  pasteID: str = request.path.removeprefix("/dl/")
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  paste: Paste = await pg.get_pastes_from_search(id=pasteID)
+
+  if paste:
+    paste = paste[0]
+    if paste.visibility == Visibility.PRIVATE.value:
+      token = await pg.handle_auth(request,no_exist_ok=True)
+      if not (token and token.creator == paste.creator and token.permissions.view_private):
+        return web.Response(status=404,body="404: not found")
+  else:
+    return web.Response(status=404,body="404: not found")
+
+  resp: web.StreamResponse = web.StreamResponse()
+  resp.headers["Content-Type"] = "text/plain"
+  resp.headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{pasteID}.txt"
+  await resp.prepare(request)
+  await resp.write(paste.data)
+  return resp
+
+@routes.get("/raw/{tail:\w+$}")
+async def get_raw_paste(request: web.Request) -> web.Response:
+  pasteID: str = request.path.removeprefix("/raw/")
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  paste: Paste = await pg.get_pastes_from_search(id=pasteID)
+
+  if paste:
+    paste = paste[0]
+    if paste.visibility == Visibility.PRIVATE.value:
+      token = await pg.handle_auth(request,no_exist_ok=True)
+      if token and token.creator == paste.creator and token.permissions.view_private:
+        return web.Response(body=paste.text_content,content_type="text/plain")
+      else:
+        return web.Response(status=404)
+    else:
+      return web.Response(body=paste.text_content,content_type="text/plain")
+  else:
+    return web.Response(status=404)
+
+
+@routes.get("/{tail:\w+$}")
 async def get_paste(request: web.Request) -> web.Response:
   pasteID: str = request.path.removeprefix("/")
   app: web.Application = request.app
@@ -158,28 +206,35 @@ async def get_paste(request: web.Request) -> web.Response:
   paste: Paste = await pg.get_pastes_from_search(id=pasteID)
 
   text_content: Union[str,False] = ""
+  authorized:   bool = False
 
   if paste:
+    token = await pg.handle_auth(request,no_exist_ok=True)
     paste = paste[0]
+    p_owner: User = await paste.get_creator(pg)
     if paste.visibility == Visibility.PRIVATE.value:
-      token = await pg.handle_auth(request,no_exist_ok=True)
-      if token and token.creator == paste.creator and token.permissions.view_private:
+      if type(token) is Token and token.owner == p_owner and token.permissions.view_private:
         text_content = paste.text_content
       else:
         text_content = False
     else:
       text_content = paste.text_content
+    if type(token) is Token and token.owner == p_owner:
+      authorized = True
   else:
     text_content = False
 
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
-  _ctx_dict: dict[str,Any] = {}
+  _ctx_dict: dict[str,Any] = {
+    "authorized": authorized,
+  }
   if text_content:
     _ctx_dict["paste"] = {
       "lines": [line for line in text_content.splitlines()],
       "title": paste.title,
       "size": humanize.naturalsize(len(paste.data)),
+      "id": paste.id,
     }
   else:
     _ctx_dict["paste"] = {
@@ -190,8 +245,6 @@ async def get_paste(request: web.Request) -> web.Response:
   ctx_dict["paste"] = sup_templates["paste.html"].render(Context(_ctx_dict))
 
   return web.Response(body=templates["paste.html"].render(Context(ctx_dict)),content_type="text/html")
-
-routes.static("/","static")
 
 def setup() -> web.RouteTableDef:
   return routes

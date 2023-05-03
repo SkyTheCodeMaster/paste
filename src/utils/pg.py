@@ -5,11 +5,13 @@ from __future__ import annotations
 import datetime
 import json
 import random
+import logging
 import string
 from inspect import isawaitable
 from typing import TYPE_CHECKING
 
 import aiofiles
+from aiofiles import os as aos
 import aioshutil
 import asyncpg
 
@@ -21,6 +23,8 @@ from aiohttp import web
 
 if TYPE_CHECKING:
   from typing import List, Union
+
+LOG = logging.getLogger(__name__)
 
 with open("config.json") as f:
   contents = f.read()
@@ -261,7 +265,7 @@ class PGUtils:
       return False
 
     async with self.pool.acquire() as conn:
-      await self.conn.execute("DELETE FROM Pastes WHERE id = $1",nPaste.id)
+      await conn.execute("DELETE FROM Pastes WHERE id = $1",nPaste.id)
       return True
     
   async def create_datadump(self, user: User) -> str:
@@ -269,11 +273,14 @@ class PGUtils:
     # Get the pastes
     pastes = await self.get_pastes_from_creator(creator=user.id)
     # Create a tmp directory
-    await aiofiles.os.makedirs(f"/tmp/{user.id}/",exist_ok=True)
+    try:
+      await aioshutil.rmtree(f"/tmp/{user.id}/")
+    except: pass
+    await aos.makedirs(f"/tmp/{user.id}/",exist_ok=True)
     for paste in pastes:
-      async with aiofiles.open(f"/tmp/{user.id}/{paste.id}","w") as f:
+      async with aiofiles.open(f"/tmp/{user.id}/{paste.id} ({paste.title}).txt","w") as f:
         await f.write(paste.text_content)
-    await aioshutil.make_archive(f"/tmp/{user.id}.zip","zip",f"/tmp/{user.id}/")
+    await aioshutil.make_archive(f"/tmp/{user.id}","zip",f"/tmp/{user.id}/")
     return f"/tmp/{user.id}.zip"
 
   async def delete_user(self, user: User, *, delete_pastes: bool = True) -> bool:

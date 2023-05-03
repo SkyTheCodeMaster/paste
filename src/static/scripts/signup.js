@@ -42,7 +42,7 @@ function format(_format) {
 // We use this to apply an `onkeypress` listener to the username input box to check if
 // it's free.
 // We can also use this to run the email address against the regex.
-window.onload = function() {
+window.addEventListener("load",function() {
   const USERNAME_MIN_LENGTH = document.getElementById("username_data").getAttribute("data-min-length");
   const USERNAME_MAX_LENGTH = document.getElementById("username_data").getAttribute("data-max-length");
   var login_button = document.getElementById("loginbtn");
@@ -108,4 +108,4 @@ window.onload = function() {
       }
     });
   } catch {};
-}
+});

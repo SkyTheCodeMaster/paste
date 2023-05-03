@@ -49,3 +49,16 @@
 .main_paste div.content li::before {
   background-color: #ccc;
 }
+
+.main_paste div.header div.right a {
+  border: 3px solid #aaa;
+  border-radius: 3px;
+  background: #aaa;
+  font-size: 12px;
+  text-decoration: none;
+  color: white;
+}
+
+.main_paste div.header div.right a:hover {
+  cursor: pointer;
+}

@@ -1,3 +1,24 @@
 * {
   font-family:'Courier New', Courier, monospace;
 }
+
+.popup_box {
+  z-index: 999;
+  border: 3px solid #04aa6d;
+  border-radius: 5px;
+  background: #ddd;
+  margin: 5px auto;
+  width: 20%;
+  position: sticky;
+}
+
+.popup_box a {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  text-decoration: none;
+  color: red;
+  font-weight: bolder;
+  font-size:x-large;
+  cursor: pointer;
+}

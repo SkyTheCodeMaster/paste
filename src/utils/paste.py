@@ -45,9 +45,9 @@ class Paste:
     }
     return json.dumps(out)
 
-  async def get_creator(self,pgUtils: PGUtils) -> User:
+  async def get_creator(self,pg: PGUtils) -> User:
     "Helper method to get the creator of the paste."
-    return await pgUtils.get_user(id=self.creator)
+    return await pg.get_user(id=self.creator)
 
   @property
   def text_content(self) -> str:

@@ -33,29 +33,20 @@ coloredlogs.install(
   datefmt=LOGDATEFMT
 )
 
-app: web.Application = web.Application()
-
-@web.middleware
-async def error_middleware(request, handler):
-  try:
-    response = await handler(request)
-    if response.status != 404:
-      return response
-    message = response.message
-  except web.HTTPException as ex:
-    if ex.status != 404:
-      raise
-    message = ex.reason
-  return web.json_response({'error': message})
+app: web.Application = web.Application(
+  middlewares=[web.normalize_path_middleware(append_slash=True,merge_slashes=True)]
+)
 
 LOG = logging.getLogger(__name__)
 
-disabledCogs = []
+disabledCogs:list[str] = []
 for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os.path.join("cogs",f))]:
   if cog not in disabledCogs:
     LOG.info(f"Loading {cog}...")
     routes = getRoutes(f"cogs.{cog}")
     app.add_routes(routes)
+
+app.add_routes([web.static("/","static")])
 
 async def startup():
   try:

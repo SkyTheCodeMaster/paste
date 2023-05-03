@@ -86,7 +86,7 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
   else:
     return web.Response(status=400,body="username already registered")
 
-@routes.post("/api/internal/user/exists")
+@routes.post("/api/internal/user/exists/")
 async def api_internal_user_exists(request: web.Request) -> web.Response:
   "Checks if a user exists. Only required post data is `name`."
   app: web.Application = request.app
@@ -138,8 +138,8 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   response.set_cookie("token",new_token)
   return response
 
-@routes.get("/api/internal/user/datadump")
-async def api_internal_user_datadump(request: web.Request) -> web.Response:
+@routes.get("/api/internal/user/data/")
+async def api_internal_user_data(request: web.Request) -> web.Response:
   """
   Gets all of a user's data and collects it into a single json package.
   Zips it up, and returns the file.
@@ -155,10 +155,8 @@ async def api_internal_user_datadump(request: web.Request) -> web.Response:
 
   path = await pg.create_datadump(token.owner)
   return web.FileResponse(path)
-  
-  
 
-@routes.delete("/api/internal/user/delete/")
+@routes.post("/api/internal/user/delete")
 async def api_internal_user_delete(request: web.Request) -> web.Response:
   """
   Deletes a user account. This action is irreversible!
