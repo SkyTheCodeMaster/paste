@@ -228,7 +228,22 @@ class PGUtils:
     if type(paste.data) is not bytes:
       paste.data = paste.data.encode()
     async with self.pool.acquire() as conn:
-      await conn.execute("INSERT INTO Pastes(id,creator,content,visibility,title,created,modified) VALUES ($1, $2, $3, $4, $5, $6, $7);",pasteID,token.owner.id,paste.data,paste.visibility,paste.title,self._time(),self._time())
+      await conn.execute("""
+        INSERT INTO 
+          Pastes
+            (id,creator,content,visibility,title,created,modified,syntax) 
+        VALUES
+          ($1, $2, $3, $4, $5, $6, $7, $8);
+        """,
+        pasteID,
+        token.owner.id,
+        paste.data,
+        paste.visibility,
+        paste.title,
+        self._time(),
+        self._time(),
+        paste.syntax
+      )
       return (await self.get_pastes_from_search(id=pasteID))[0],""
 
   async def edit_paste(self, paste:Paste, token: Union[Token,str]) -> Union[Paste,bool]:
@@ -246,7 +261,7 @@ class PGUtils:
     if token.owner.id != nPaste.creator:
       return False
     async with self.pool.acquire() as conn:
-      await conn.execute("UPDATE Pastes SET Content = $1, Title = $2, Visibility = $3, Modified=$5 WHERE id = $4",paste.data,paste.title,paste.visibility,nPaste.id,self._time())
+      await conn.execute("UPDATE Pastes SET Content = $1, Title = $2, Visibility = $3, Modified=$5, Syntax = $6 WHERE id = $4",paste.data,paste.title,paste.visibility,nPaste.id,self._time(),paste.syntax)
       return (await self.get_pastes_from_search(id=nPaste.id))[0]
 
   async def delete_paste(self,paste: Paste, token: Token) -> bool:

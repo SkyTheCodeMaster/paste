@@ -19,7 +19,7 @@ with open("config.json") as f:
   PUBLIC_URL = json.loads(f.read())["srv.publicurl"]
 
 class Paste:
-  def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str, created: int = None, modified: int = None) -> None:
+  def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str, created: int = None, modified: int = None, syntax: str = None) -> None:
     self.id = id
     self.creator = creator
     self.data = data
@@ -27,6 +27,7 @@ class Paste:
     self.title = title
     self.created = created
     self.modified = modified
+    self.syntax = syntax
   
   @property
   def url(self) -> str:
@@ -41,7 +42,8 @@ class Paste:
       "title":self.title,
       "content": self.text_content,
       "created": self.created,
-      "modified": self.modified
+      "modified": self.modified,
+      "syntax": self.syntax,
     }
     return json.dumps(out)
 
@@ -53,7 +55,7 @@ class Paste:
   def text_content(self) -> str:
     return self.data.decode()
 
-  def edit(self,*,newContent: str = None, newVisibility: Union[Visibility,int] = None, newTitle: str = None) -> None:
+  def edit(self,*,newContent: str = None, newVisibility: Union[Visibility,int] = None, newTitle: str = None, newSyntax: str = None) -> None:
     "Edits the paste *in memory*, not in the database."
     if newContent:
       self.data = newContent.encode()
@@ -67,6 +69,9 @@ class Paste:
     if newTitle:
       self.title = newTitle
 
+    if newSyntax:
+      self.syntax = newSyntax
+
   @classmethod
   def from_record(cls, record: Record) -> Self:
     paste = cls(
@@ -76,7 +81,8 @@ class Paste:
       visibility=record["visibility"],
       title=record["title"],
       created=record["created"],
-      modified=record["modified"]
+      modified=record["modified"],
+      syntax=record["syntax"],
     )
     return paste
 
@@ -88,17 +94,19 @@ class Paste:
       visibility=self.visibility,
       title=self.title,
       created=self.created,
-      modified=self.modified
+      modified=self.modified,
+      syntax=self.syntax,
     )
     return newPaste
 
-  async def update(self,pgUtils:PGUtils) -> Self:
-    paste = (await pgUtils.get_pastes_from_search(id=self.id))[0]
+  async def update(self,pg:PGUtils) -> Self:
+    paste = (await pg.get_pastes_from_search(id=self.id))[0]
     self.id = paste.id
     self.creator= paste.creator
     self.data = paste.data
     self.visibility = paste.visibility
     self.title = paste.title
     self.created = paste.created
-    self.modified = paste.modified
+    self.modified = paste.modified,
+    self.syntax = paste.syntax
     return self

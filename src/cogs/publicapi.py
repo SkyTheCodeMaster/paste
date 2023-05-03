@@ -154,13 +154,16 @@ async def api_paste_create(request: web.Request) -> web.Response:
     int(data.get("visibility"))
   except ValueError:
     return web.Response(status=400,text="invalid visibility")
+
+  syntax: str = data.get("syntax","plaintext")
   
   paste = Paste(
     id="",
     creator=token.owner.id,
     data=data.get("content"),
     visibility=data.get("visibility"),
-    title=data.get("title")
+    title=data.get("title"),
+    syntax=syntax
   )
 
   newPaste,reason = await pg.create_new_paste(paste,token)

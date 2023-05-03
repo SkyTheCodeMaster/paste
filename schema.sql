@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS Pastes (
   Visibility INT,
   Title TEXT,
   Created BIGINT,
-  Modified BIGINT
+  Modified BIGINT,
+  Syntax TEXT,
 );
 
 CREATE TABLE IF NOT EXISTS APITokens (
