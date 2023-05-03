@@ -33,8 +33,24 @@
     </div>
 
     <!-- Create new pastes -->
-    <div class="paste_box">
-
+    <div class="paste_edit_div">
+      <div class="paste_box">
+        <p> word </p>
+      </div>
+      <div class="button_box">
+        <label for="title">Title:</label>
+        <input type="text" id="title_input" name="title">
+        <label for="visibility">Visibility:</label>
+        <select name="visibility" id="visibility_input">
+          <option value="PUBLIC">Public</option>
+          <option value="UNLISTED">Unlisted</option>
+          {% if authorized %}
+            <option value="PRIVATE">Private</option>
+          {% endif %}
+        </select>
+        
+        <a onclick="signup()" class="loginbtn" id="loginbtn">Sign Up</a>
+      </div>
     </div>
   </body>
 </html>

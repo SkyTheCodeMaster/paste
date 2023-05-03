@@ -1,0 +1,9 @@
+.paste_edit_div div.paste_box {
+  border: 3px solid #04aa6d;
+  border-radius: 3px;
+  width: 80%;
+  margin: 5px;
+  height: 80%;
+  overflow: scroll;
+  position: absolute;
+}

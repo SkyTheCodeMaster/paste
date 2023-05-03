@@ -26,7 +26,7 @@ function create_popup(reason) {
   const h1_node = document.createTextNode(reason);
   // Add the close button
   const a = document.createElement("a");
-  a.onclick = function() { remove_popup(id) };
+  a.onclick = function() { remove_popup(id,reason) };
   const a_node = document.createTextNode("X");
   // Put everything together
   a.appendChild(a_node);
@@ -38,12 +38,20 @@ function create_popup(reason) {
   body.appendChild(div);
 }
 
-function remove_popup(popup) {
+function remove_popup(popup,reason) {
   var elem = document.getElementById(popup)
   elem.parentNode.removeChild(elem);
+  // Now remove the popup from local storage
+  var data = JSON.parse(localStorage.getItem("popup_alert"));
+  var idx = data.indexOf(reason);
+  if (idx !== -1) { data.splice(idx, 1) }
+  localStorage.setItem("popup_alert",JSON.stringify(data));
 }
 
 window.addEventListener("load",function() {
+  if (this.window.document.documentMode) {
+    create_popup("Internet explorer is not a supported browser for this website.");
+  }
   var data = localStorage.getItem("popup_alert");
   console.log(data);
   var arr = JSON.parse(data);
