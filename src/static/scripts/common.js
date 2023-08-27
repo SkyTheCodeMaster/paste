@@ -53,9 +53,24 @@ window.addEventListener("load",function() {
     create_popup("Internet explorer is not a supported browser for this website.");
   }
   var data = localStorage.getItem("popup_alert");
-  console.log(data);
   var arr = JSON.parse(data);
   for (const reason of arr) {
     create_popup(reason);
+  }
+});
+
+window.addEventListener("load", function() {
+  try {
+    var textarea = document.getElementById("paste_edit_textarea");
+    textarea.addEventListener("input", function() {
+      textarea.style.height = "auto";
+      textarea.style.height = textarea.scrollHeight + "px";
+    })
+  } catch {}
+});
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === 's' && e.ctrlKey) {
+    e.preventDefault();
   }
 });

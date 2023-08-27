@@ -22,7 +22,7 @@ from utils.utils import hash
 from aiohttp import web
 
 if TYPE_CHECKING:
-  from typing import List, Union
+  from typing import Union
 
 LOG = logging.getLogger(__name__)
 
@@ -68,18 +68,13 @@ class PGUtils:
     "Get a user from either username, email, or the ID, and return a User object."
     async with self.pool.acquire() as conn:
       if name:
-        row = await conn.fetchrow("SELECT * FROM Users WHERE Username LIKE $1", name)
+        record = await conn.fetchrow("SELECT * FROM Users WHERE Username LIKE $1", name)
       elif email:
-        row = await conn.fetchrow("SELECT * FROM Users WHERE Email LIKE $1", email)
+        record = await conn.fetchrow("SELECT * FROM Users WHERE Email LIKE $1", email)
       elif id:
-        row = await conn.fetchrow("SELECT * FROM Users WHERE Id = $1", id)
+        record = await conn.fetchrow("SELECT * FROM Users WHERE Id = $1", id)
 
-      return User(
-        name=row["username"],
-        password=row["password"],
-        email=row["email"],
-        id=row["id"]
-      )
+      return User.from_record(record)
 
   async def create_new_user(self,user: User) -> int:
     "Create a new user, and return the ID of the user."
@@ -169,12 +164,7 @@ class PGUtils:
         return token
       record = await conn.fetchrow("SELECT * FROM Users WHERE Password = $1 OR Token = $1;",token)
       if record:
-        user = User(
-          name=record["username"],
-          password=record["password"],
-          email=record["email"],
-          id=record["id"]
-        )
+        user = User.from_record(record)
         token = Token(
           name="PASSWORD",
           owner=user,

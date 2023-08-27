@@ -111,9 +111,20 @@ async def prepare_navbar(request: web.Request) -> str:
 @routes.get("/")
 async def get_index(request: web.Request) -> web.Response:
   # Load the index.html template
+  pg: PGUtils = request.app.pg
+
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
-  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+
+  token = await pg.handle_auth(request,strict_password=True,no_exist_ok=True)
+  authorized = type(token) is Token
+
+  ctx_dict: dict[str,Any] = {
+    "navbar":navbar,
+    "public_pastes":public_pastes,
+    "self_pastes":self_pastes,
+    "authorized": authorized
+  }
   rendered = templates["index.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 

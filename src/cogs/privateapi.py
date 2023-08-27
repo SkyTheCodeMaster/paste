@@ -128,7 +128,8 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
     name="name" in data and data["name"] or old_user.name,
     email="email" in data and data["email"] or old_user.email,
     password="newpassword" in data and data["newpassword"] or old_user.password,
-    id=old_user.id
+    id=old_user.id,
+    token=old_user.token
   )
 
   await pg.update_user(new_user)

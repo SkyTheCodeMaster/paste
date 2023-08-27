@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/sidebar.css">
     <link rel="stylesheet" href="/css/edit_paste.css">
     <script src="/scripts/common.js" async></script>
+    <script src="/scripts/highlight.min.js" async></script>
   </head>
   <body>
     {{ navbar | safe }}
@@ -35,11 +36,11 @@
     <!-- Create new pastes -->
     <div class="paste_edit_div">
       <div class="paste_box">
-        <p> word </p>
+        <textarea id="paste_edit_textarea"></textarea>
       </div>
       <div class="button_box">
         <label for="title">Title:</label>
-        <input type="text" id="title_input" name="title">
+        <input type="text" id="title_input" name="title"><br>
         <label for="visibility">Visibility:</label>
         <select name="visibility" id="visibility_input">
           <option value="PUBLIC">Public</option>
@@ -47,9 +48,9 @@
           {% if authorized %}
             <option value="PRIVATE">Private</option>
           {% endif %}
-        </select>
+        </select><br>
         
-        <a onclick="signup()" class="loginbtn" id="loginbtn">Sign Up</a>
+        <a onclick="create_paste()" class="create_paste_btn" id="createbtn">Create Paste</a>
       </div>
     </div>
   </body>
