@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime
-import json
+import tomllib
 import random
 import logging
 import string
@@ -26,14 +26,14 @@ if TYPE_CHECKING:
 
 LOG = logging.getLogger(__name__)
 
-with open("config.json") as f:
+with open("config.toml") as f:
   contents = f.read()
-  config = json.loads(contents)
-  PASTE_ID_LENGTH   = config["paste.id_length"]
-  TOKEN_ID_LENGTH   = config["token.id_length"]
-  USER_TOKEN_LENGTH = config["user.token_length"]
-  USERNAME_MIN_LENGTH = config["user.name_min"]
-  USERNAME_MAX_LENGTH = config["user.name_max"]
+  config = tomllib.loads(contents)
+  PASTE_ID_LENGTH   = config["paste"]["id_length"]
+  TOKEN_ID_LENGTH   = config["token"]["id_length"]
+  USER_TOKEN_LENGTH=config["user"]["token_length"]
+  USERNAME_MIN_LENGTH = config["user"]["name_min"]
+  USERNAME_MAX_LENGTH = config["user"]["name_max"]
 
 class PGUtils:
   def __init__(self, pool: asyncpg.Pool = None):

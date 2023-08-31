@@ -1,0 +1,38 @@
+# Config for paste server
+
+# Enable live refresh of page.
+# This will re-read the html page from file on every request.
+devmode = true
+
+[pg]
+  # Postgres details
+  url = "postgresql://1.2.3.4/paste_server"
+  password ="password"
+  timeout = 3.0
+
+[srv]
+  # Host for the server to run on, usually 127.0.0.1 or 0.0.0.0
+  host = "0.0.0.0"
+  # Port
+  port = 10000
+  # Public URL for filling in various links
+  publicurl = "http://1.2.3.5:10000/"
+
+[log]
+  # Log file, set to empty string to disable
+  file = "log.txt"
+
+[paste]
+  # Paste ID length
+  id_length = 8
+
+[token]
+  # Token ID length
+  id_length = 64
+
+[user]
+  # User token length (for sessions)
+  token_length = 128
+  # Username  minimum and maximum
+  name_min = 3
+  name_max = 20

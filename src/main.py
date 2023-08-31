@@ -1,5 +1,5 @@
 import asyncio
-import json
+import tomllib
 import logging
 import math
 import os
@@ -15,14 +15,18 @@ LOGFMT = "[%(filename)s][%(asctime)s][%(levelname)s] %(message)s"
 LOGDATEFMT = "%Y/%m/%d-%H:%M:%S"
 
 # Load the config file.
-with open("config.json") as f:
-  config = json.loads(f.read())
+with open("config.toml") as f:
+  config = tomllib.loads(f.read())
+
+handlers = [
+  logging.StreamHandler()
+]
+
+if config["log"]["file"]:
+  handlers.append(logging.FileHandler(config["log"]["file"]))
 
 logging.basicConfig(
-  handlers = [
-    #logging.FileHandler(config["log.file"]),
-    logging.StreamHandler(),
-  ],
+  handlers = handlers,
   format=LOGFMT,
   datefmt=LOGDATEFMT,
   level=logging.INFO,
@@ -51,9 +55,9 @@ app.add_routes([web.static("/","static")])
 async def startup():
   try:
     pool = await asyncpg.create_pool(
-      config["pg.url"],
-      password=config["pg.password"],
-      timeout=config["pg.timeout"]
+      config["pg"]["url"],
+      password=config["pg"]["password"],
+      timeout=config["pg"]["timeout"]
     )
     
     pg = PGUtils(pool)
@@ -64,11 +68,11 @@ async def startup():
     await runner.setup()
     site = web.TCPSite(
       runner,
-      config["srv.host"],
-      config["srv.port"],
+      config["srv"]["host"],
+      config["srv"]["port"],
     )
     await site.start()
-    print(f"Started server on http://{config['srv.host']}:{config['srv.port']}...\nPress ^C to close...")
+    print(f"Started server on http://{config['srv']['host']}:{config['srv']['port']}...\nPress ^C to close...")
     await asyncio.sleep(math.inf)
   except KeyboardInterrupt:
     pass

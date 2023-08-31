@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-import json
+import tomllib
 import os
 import tempfile
 from typing import TYPE_CHECKING
@@ -27,11 +27,14 @@ django_setup()
 
 routes = web.RouteTableDef()
 
-with open("config.json") as f:
+grand_context = {}
+
+with open("config.toml") as f:
   contents = f.read()
-  config = json.loads(contents)
-  USERNAME_MIN_LENGTH = config["user.name_min"]
-  USERNAME_MAX_LENGTH = config["user.name_max"]
+  config = tomllib.loads(contents)
+  USERNAME_MIN_LENGTH = config["user"]["name_min"]
+  USERNAME_MAX_LENGTH = config["user"]["name_max"]
+  grand_context["public_url"] = config["srv"]["publicurl"]
 
 # Load all of the templates in the static folder.
 engine = Engine()
@@ -47,6 +50,17 @@ for file in [f for f in os.listdir("templates/supporting") if os.path.isfile(os.
   with open(os.path.join("templates/supporting",file),"r") as f:
     tmpl = engine.from_string(f.read())
     sup_templates[file] = tmpl
+
+def reload_files():
+  for file in [f for f in os.listdir("templates") if os.path.isfile(os.path.join("templates",f))]:
+    with open(os.path.join("templates",file),"r") as f:
+      tmpl = engine.from_string(f.read())
+      templates[file] = tmpl
+
+  for file in [f for f in os.listdir("templates/supporting") if os.path.isfile(os.path.join("templates/supporting",f))]:
+    with open(os.path.join("templates/supporting",file),"r") as f:
+      tmpl = engine.from_string(f.read())
+      sup_templates[file] = tmpl
 
 latest_pastes_cache: list[Paste] = [] # A list of public Pastes for the sidebar.
 latest_pastes_cache_age: int = 0
@@ -100,16 +114,22 @@ async def prepare_account_area(request: web.Request) -> str:
       "name": user.name
     }
 
-    ctx_dict = {"account":account}
+    ctx_dict = {**grand_context, "account":account}
     return sup_templates["loggedin.html"].render(Context(ctx_dict))
 
 async def prepare_navbar(request: web.Request) -> str:
-  login_area = await prepare_account_area(request)
-  ctx_dict = {"account": login_area}
+  #login_area = await prepare_account_area(request)
+  ctx_dict = {
+    **grand_context, 
+    #"account": login_area
+  }
   return sup_templates["navbar.html"].render(Context(ctx_dict))
 
 @routes.get("/")
 async def get_index(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   # Load the index.html template
   pg: PGUtils = request.app.pg
 
@@ -120,6 +140,7 @@ async def get_index(request: web.Request) -> web.Response:
   authorized = type(token) is Token
 
   ctx_dict: dict[str,Any] = {
+    **grand_context, 
     "navbar":navbar,
     "public_pastes":public_pastes,
     "self_pastes":self_pastes,
@@ -130,10 +151,14 @@ async def get_index(request: web.Request) -> web.Response:
 
 @routes.get("/login")
 async def get_index(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   # Load the index.html template
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
   ctx_dict: dict[str,Any] = {
+    **grand_context, 
     "navbar":navbar,
     "public_pastes":public_pastes,
     "self_pastes":self_pastes,
@@ -147,10 +172,14 @@ async def get_index(request: web.Request) -> web.Response:
 
 @routes.get("/signup")
 async def get_index(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   # Load the index.html template
   public_pastes, self_pastes = await prepare_sidebar(request)
   navbar = await prepare_navbar(request)
   ctx_dict: dict[str,Any] = {
+    **grand_context, 
     "navbar":navbar,
     "public_pastes":public_pastes,
     "self_pastes":self_pastes,
@@ -163,7 +192,10 @@ async def get_index(request: web.Request) -> web.Response:
   return web.Response(body=rendered,content_type="text/html")
 
 @routes.get("/dl/{tail:\w+$}")
-async def get_raw_paste(request: web.Request) -> web.Response:
+async def get_dl_paste(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   pasteID: str = request.path.removeprefix("/dl/")
   app: web.Application = request.app
   pg: PGUtils = app.pg
@@ -188,6 +220,9 @@ async def get_raw_paste(request: web.Request) -> web.Response:
 
 @routes.get("/raw/{tail:\w+$}")
 async def get_raw_paste(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   pasteID: str = request.path.removeprefix("/raw/")
   app: web.Application = request.app
   pg: PGUtils = app.pg
@@ -210,6 +245,9 @@ async def get_raw_paste(request: web.Request) -> web.Response:
 
 @routes.get("/{tail:\w+$}")
 async def get_paste(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
   pasteID: str = request.path.removeprefix("/")
   app: web.Application = request.app
   pg: PGUtils = app.pg
@@ -242,6 +280,7 @@ async def get_paste(request: web.Request) -> web.Response:
   }
   if text_content:
     _ctx_dict["paste"] = {
+      **grand_context, 
       "lines": [line for line in text_content.splitlines()],
       "title": paste.title,
       "size": humanize.naturalsize(len(paste.data)),
@@ -249,10 +288,11 @@ async def get_paste(request: web.Request) -> web.Response:
     }
   else:
     _ctx_dict["paste"] = {
+      **grand_context, 
       "title": "The paste you are looking for either does not exist, or is private."
     }
 
-  ctx_dict: dict[str,Any] = {"navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
+  ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"public_pastes":public_pastes,"self_pastes":self_pastes}
   ctx_dict["paste"] = sup_templates["paste.html"].render(Context(_ctx_dict))
 
   return web.Response(body=templates["paste.html"].render(Context(ctx_dict)),content_type="text/html")

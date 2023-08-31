@@ -2,56 +2,9 @@
 <html>
   <head>
     <title>Sky Paste</title>
-    <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/navbar.css">
-    <link rel="stylesheet" href="/css/sidebar.css">
-    <link rel="stylesheet" href="/css/edit_paste.css">
-    <script src="/scripts/common.js" async></script>
-    <script src="/scripts/highlight.min.js" async></script>
+    <link rel="stylesheet" href="/css/bulma.css">
   </head>
   <body>
-    {{ navbar | safe }}
-    <!--Do the "latest pastes" section-->
-    <div class="sidebar">
-      {% if self_pastes %}
-        <p class="header">My Pastes</p>
-        {% for paste in self_pastes %}
-          <div class="paste">
-            <a class="title" href="/{{ paste.id }}">{{ paste.name }}</a>
-            <hr>
-            <p class="info">{{ paste.date }} | {{ paste.size }}</p>
-          </div>
-        {% endfor %}
-      {% endif %}
-      <p class="header">Public Pastes</p>
-      {% for paste in public_pastes %}
-        <div class="paste">
-          <a class="title" href="/{{ paste.id }}">{{ paste.name }}</a>
-          <hr>
-          <p class="info">{{ paste.date }} | {{ paste.size }}</p>
-        </div>
-      {% endfor %}
-    </div>
-
-    <!-- Create new pastes -->
-    <div class="paste_edit_div">
-      <div class="paste_box">
-        <textarea id="paste_edit_textarea"></textarea>
-      </div>
-      <div class="button_box">
-        <label for="title">Title:</label>
-        <input type="text" id="title_input" name="title"><br>
-        <label for="visibility">Visibility:</label>
-        <select name="visibility" id="visibility_input">
-          <option value="PUBLIC">Public</option>
-          <option value="UNLISTED">Unlisted</option>
-          {% if authorized %}
-            <option value="PRIVATE">Private</option>
-          {% endif %}
-        </select><br>
-        
-        <a onclick="create_paste()" class="create_paste_btn" id="createbtn">Create Paste</a>
-      </div>
-    </div>
+    {{ navbar }}
   </body>
 </html>

@@ -7,7 +7,7 @@ pyvenv.cfg
 share/*
 
 
-src/config.json
+src/config.toml
 
 test/*
 

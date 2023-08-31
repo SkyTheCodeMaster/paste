@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 import urllib.parse
 from typing import TYPE_CHECKING
 
@@ -15,8 +16,8 @@ if TYPE_CHECKING:
   from utils.utils import Visibility
 
 
-with open("config.json") as f:
-  PUBLIC_URL = json.loads(f.read())["srv.publicurl"]
+with open("config.toml") as f:
+  PUBLIC_URL = tomllib.loads(f.read())["srv"]["publicurl"]
 
 class Paste:
   def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str, created: int = None, modified: int = None, syntax: str = None) -> None:
