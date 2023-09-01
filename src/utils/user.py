@@ -7,6 +7,11 @@ if TYPE_CHECKING:
   from asyncpg import Record
 
 class User():
+  name: str
+  password: str # this is the hashed/salted/whatever password
+  email: str
+  id: int
+  token: str
   def __init__(self, *, name: str = None, password: str = None, email: str = None, id: int = None, token: str = None):
     self.name = name
     self.password = password

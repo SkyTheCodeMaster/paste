@@ -3,8 +3,10 @@
   <head>
     <title>Sky Paste</title>
     <link rel="stylesheet" href="/css/bulma.css">
+    <script src="/scripts/common.js" async></script>
   </head>
   <body>
-    {{ navbar }}
+    {{ navbar | safe }}
+    
   </body>
 </html>

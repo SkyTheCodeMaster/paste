@@ -1,8 +1,9 @@
+aiofiles==23.1.0
 aiohttp==3.8.3
-django==4.1.2
+aioshutil==1.3
 asyncpg==0.27.0
 coloredlogs==15.0.1
-typing_extensions==4.4.0
-aiofiles==23.1.0
-aioshutil==1.3
+django==4.1.2
+git+https://github.com/SkyTheCodeMaster/aiohttp-ratelimiter
 humanize==4.6.0
+typing_extensions==4.4.0

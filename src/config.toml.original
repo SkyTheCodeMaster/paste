@@ -17,6 +17,10 @@ devmode = true
   port = 10000
   # Public URL for filling in various links
   publicurl = "http://1.2.3.5:10000/"
+  # IPs exempt from ratelimiting.
+  ratelimit_exempt = [
+    "192.168.0.0/16",
+  ]
 
 [log]
   # Log file, set to empty string to disable
@@ -36,3 +40,11 @@ devmode = true
   # Username  minimum and maximum
   name_min = 3
   name_max = 20
+  # Password length limits
+  # This affects new sign ups only!
+  password_min = 8
+  password_max = 512
+  # Salt length, default should be fine (Username is also part of salt)
+  salt_length = 32
+  # Hash iteration count. This affects everyone, change with caution!
+  hash_iterations = 500

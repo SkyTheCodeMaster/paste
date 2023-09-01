@@ -8,7 +8,7 @@ import asyncpg
 import coloredlogs
 from aiohttp import web
 
-from utils.utils import getRoutes
+from utils.utils import get_routes
 from utils.pg import PGUtils
 # Constant variables
 LOGFMT = "[%(filename)s][%(asctime)s][%(levelname)s] %(message)s"
@@ -47,7 +47,7 @@ disabledCogs:list[str] = []
 for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os.path.join("cogs",f))]:
   if cog not in disabledCogs:
     LOG.info(f"Loading {cog}...")
-    routes = getRoutes(f"cogs.{cog}")
+    routes = get_routes(f"cogs.{cog}")
     app.add_routes(routes)
 
 app.add_routes([web.static("/","static")])

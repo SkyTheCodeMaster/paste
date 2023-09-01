@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import tomllib
 import os
-import tempfile
+import pathlib
 from typing import TYPE_CHECKING
 
 import humanize
@@ -34,6 +34,8 @@ with open("config.toml") as f:
   config = tomllib.loads(contents)
   USERNAME_MIN_LENGTH = config["user"]["name_min"]
   USERNAME_MAX_LENGTH = config["user"]["name_max"]
+  PASSWORD_MIN_LENGTH = config["user"]["password_min"]
+  PASSWORD_MAX_LENGTH = config["user"]["password_max"]
   grand_context["public_url"] = config["srv"]["publicurl"]
 
 # Load all of the templates in the static folder.
@@ -41,26 +43,40 @@ engine = Engine()
 templates: dict[str,Template] = {}
 sup_templates: dict[str,Template] = {}
 
-for file in [f for f in os.listdir("templates") if os.path.isfile(os.path.join("templates",f))]:
-  with open(os.path.join("templates",file),"r") as f:
-    tmpl = engine.from_string(f.read())
-    templates[file] = tmpl
+def join(a: str, b: str) -> str:
+  "Join 2 filepaths"
+  return str(pathlib.Path(a).joinpath(pathlib.Path(b)))
 
-for file in [f for f in os.listdir("templates/supporting") if os.path.isfile(os.path.join("templates/supporting",f))]:
-  with open(os.path.join("templates/supporting",file),"r") as f:
-    tmpl = engine.from_string(f.read())
-    sup_templates[file] = tmpl
+for root, dirs, files in os.walk("templates"):
+  if "supporting" in root: continue
+  for file in files:
+    filepath = join(root,file)
+    with open(filepath,"r") as f:
+      tmpl = engine.from_string(f.read())
+      templates[filepath.removeprefix("templates").removeprefix("/")] = tmpl
+
+for root, dirs, files in os.walk("templates/supporting"):
+  for file in files:
+    filepath = join(root,file)
+    with open(filepath,"r") as f:
+      tmpl = engine.from_string(f.read())
+      sup_templates[filepath.removeprefix("templates/supporting").removeprefix("/")] = tmpl
 
 def reload_files():
-  for file in [f for f in os.listdir("templates") if os.path.isfile(os.path.join("templates",f))]:
-    with open(os.path.join("templates",file),"r") as f:
-      tmpl = engine.from_string(f.read())
-      templates[file] = tmpl
+  for root, dirs, files in os.walk("templates"):
+    if "supporting" in root: continue
+    for file in files:
+      filepath = join(root,file)
+      with open(filepath,"r") as f:
+        tmpl = engine.from_string(f.read())
+        templates[filepath.removeprefix("templates").removeprefix("/")] = tmpl
 
-  for file in [f for f in os.listdir("templates/supporting") if os.path.isfile(os.path.join("templates/supporting",f))]:
-    with open(os.path.join("templates/supporting",file),"r") as f:
-      tmpl = engine.from_string(f.read())
-      sup_templates[file] = tmpl
+  for root, dirs, files in os.walk("templates/supporting"):
+    for file in files:
+      filepath = join(root,file)
+      with open(filepath,"r") as f:
+        tmpl = engine.from_string(f.read())
+        sup_templates[filepath.removeprefix("templates/supporting").removeprefix("/")] = tmpl
 
 latest_pastes_cache: list[Paste] = [] # A list of public Pastes for the sidebar.
 latest_pastes_cache_age: int = 0
@@ -107,7 +123,7 @@ async def prepare_account_area(request: web.Request) -> str:
   if type(token) != Token:
     # This means that there is no valid authorization, and we should display the "log in"
     # and "sign up" buttons.
-    return sup_templates["notloggedin.html"].source
+    return sup_templates["account/not_logged_in.html"].source
   else:
     user = token.owner
     account = {
@@ -115,13 +131,13 @@ async def prepare_account_area(request: web.Request) -> str:
     }
 
     ctx_dict = {**grand_context, "account":account}
-    return sup_templates["loggedin.html"].render(Context(ctx_dict))
+    return sup_templates["account/logged_in.html"].render(Context(ctx_dict))
 
 async def prepare_navbar(request: web.Request) -> str:
-  #login_area = await prepare_account_area(request)
+  login_area = await prepare_account_area(request)
   ctx_dict = {
     **grand_context, 
-    #"account": login_area
+    "account": login_area
   }
   return sup_templates["navbar.html"].render(Context(ctx_dict))
 
@@ -164,10 +180,10 @@ async def get_index(request: web.Request) -> web.Response:
     "self_pastes":self_pastes,
     "config": {
       "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
-      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH
+      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH,
     }
   }
-  rendered = templates["login.html"].render(Context(ctx_dict))
+  rendered = templates["login/login.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
 @routes.get("/signup")
@@ -185,10 +201,12 @@ async def get_index(request: web.Request) -> web.Response:
     "self_pastes":self_pastes,
     "config": {
       "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
-      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH
+      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH,
+      "PASSWORD_MAX_LENGTH": PASSWORD_MAX_LENGTH,
+      "PASSWORD_MIN_LENGTH": PASSWORD_MIN_LENGTH,
     }
   }
-  rendered = templates["signup.html"].render(Context(ctx_dict))
+  rendered = templates["login/signup.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
 @routes.get("/dl/{tail:\w+$}")

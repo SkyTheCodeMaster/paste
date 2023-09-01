@@ -6,7 +6,7 @@ from utils.pg import PGUtils
 
 from utils.ratelimit import limiter
 from utils.user import User
-from utils.utils import isHash,hash
+from utils.utils import is_hash,ahash
 from utils.token import Token
 
 routes = web.RouteTableDef()
@@ -33,8 +33,8 @@ async def api_login(request: web.Request) -> web.Response:
   name = data["name"]
   passwd = data["password"]
   remember_me = data.get("rememberme",False)
-  if not isHash(passwd):
-    passwd = hash(passwd,name)
+  if not is_hash(passwd):
+    passwd = await ahash(passwd,name)
   user_token = await pg.verify_token(passwd)
   if not user_token:
     return web.Response(status=401)
@@ -72,8 +72,8 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
   if not email_regex.match(email):
     return web.Response(status=400,body="email invalid")
 
-  if not isHash(passwd):
-    passwd = hash(passwd,name)
+  if not is_hash(passwd):
+    passwd = await ahash(passwd,name)
   user = User(name=name,password=passwd,email=email)
   new_id = await pg.create_new_user(user)
   user.id = new_id
@@ -157,7 +157,7 @@ async def api_internal_user_data(request: web.Request) -> web.Response:
   path = await pg.create_datadump(token.owner)
   return web.FileResponse(path)
 
-@routes.post("/api/internal/user/delete")
+@routes.delete("/api/internal/user/delete")
 async def api_internal_user_delete(request: web.Request) -> web.Response:
   """
   Deletes a user account. This action is irreversible!
@@ -245,7 +245,7 @@ async def api_internal_token_edit(request: web.Request) -> web.Response:
   )
   return web.Response(status=200)
 
-@routes.post("/api/internal/token/delete/")
+@routes.delete("/api/internal/token/delete/")
 async def api_internal_token_delete(request: web.Request) -> web.Response:
   """
   Delete a token.
