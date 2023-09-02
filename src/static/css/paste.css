@@ -1,0 +1,42 @@
+/* This adds line numbers to pastes */
+
+.main-paste-code {
+  margin:0;
+  padding:0;
+  border-radius:0px;
+}
+
+.main-paste-code pre {
+  padding:0;
+}
+
+.main-paste-code code {
+  counter-reset: step;
+  width: 100%;
+  counter-increment: step 0;
+}
+
+.mainpaste-code code .line {
+  width: 100%;
+}
+
+.main-paste-code .focus {
+  background-color: hsl(60, 100%, 83.33%);
+  width: 100%;
+}
+
+.main-paste-code code .line::before {
+  content: counter(step)".";
+  counter-increment: step;
+  width: 1rem;
+  margin-right: 0.5rem;
+  margin-left:0;
+  padding-left:0px;
+  margin-top:0px;
+  padding-top:0px;
+  display: inline-block;
+  text-align: right;
+  /* https://bulma.io/documentation/helpers/color-helpers */
+  color: hsl(0, 0%, 48%); /* has-text-grey */
+  background-color: hsl(0, 0%, 71%); /* has-background-grey-light */ 
+}

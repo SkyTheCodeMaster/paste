@@ -288,12 +288,11 @@ async def get_paste(request: web.Request) -> web.Response:
 
   text_content: Union[str,False] = ""
   authorized:   bool = False
-
+  logged_in:    bool = False
   if paste:
     token = await pg.handle_auth(request,no_exist_ok=True)
     paste = paste[0]
     p_owner: User = await paste.get_creator(pg)
-    authorized = token.owner == p_owner
     if paste.visibility == Visibility.PRIVATE.value:
       if type(token) is Token and token.owner == p_owner and token.permissions.view_private:
         text_content = paste.text_content
@@ -301,8 +300,9 @@ async def get_paste(request: web.Request) -> web.Response:
         text_content = False
     else:
       text_content = paste.text_content
-    if type(token) is Token and token.owner == p_owner:
-      authorized = True
+    authorized = type(token) is Token and token.owner == p_owner
+    logged_in  = type(token) is Token
+
   else:
     text_content = False
 
@@ -310,6 +310,7 @@ async def get_paste(request: web.Request) -> web.Response:
   navbar = await prepare_navbar(request)
   _ctx_dict: dict[str,Any] = {
     "authorized": authorized,
+    "logged_in": logged_in,
   }
   if text_content:
     _ctx_dict["paste"] = {
@@ -320,8 +321,8 @@ async def get_paste(request: web.Request) -> web.Response:
       "relative_time": humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
       "real_time": datetime.datetime.fromtimestamp(paste.created, datetime.timezone.utc).strftime("%c"),
       "id": paste.id,
+      "Syntax": paste.syntax.title(),
       "syntax": paste.syntax,
-      "authorized": authorized
     }
     ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main.html"].render(Context(_ctx_dict))
