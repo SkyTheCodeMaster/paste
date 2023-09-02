@@ -11,6 +11,14 @@ function make_id(length) {
   }
   return result;
 }
+function append_alert(reason) {
+  // Get current alerts
+  var data = JSON.parse(localStorage.getItem("popup_alert"));
+  // Append our alert
+  data.push(reason);
+  // Write the alerts back
+  localStorage.setItem("popup_alert",JSON.stringify(data));
+}
 
 function create_popup(reason) {
   // Create the div
@@ -20,19 +28,25 @@ function create_popup(reason) {
   var id = make_id(10);
   div.id = id;
 
-  div.classList.add("popup_box");
+  div.style.position = "fixed";
+  div.style.top = "0";
+  div.style.right = "40%";
+  div.style.width = "20%";
+  div.style.zIndex = "100";
+
+  const notification = document.createElement("div")
+  notification.classList.add("notification");
+  notification.classList.add("is-primary");
   // Add a header to the div
-  const h1 = document.createElement("h1");
-  const h1_node = document.createTextNode(reason);
+  const text_node = document.createTextNode(reason);
   // Add the close button
-  const a = document.createElement("a");
-  a.onclick = function() { remove_popup(id,reason) };
-  const a_node = document.createTextNode("X");
+  const button = document.createElement("button");
+  button.classList.add("delete")
+  button.onclick = function() { remove_popup(id,reason) };
   // Put everything together
-  a.appendChild(a_node);
-  h1.appendChild(h1_node);
-  div.appendChild(a);
-  div.appendChild(h1)
+  notification.appendChild(button);
+  notification.appendChild(text_node)
+  div.appendChild(notification);
   // Add it to the HTML page.
   const body = document.body;
   body.appendChild(div);
@@ -49,6 +63,9 @@ function remove_popup(popup,reason) {
 }
 
 window.addEventListener("load",function() {
+  if (!this.localStorage.getItem("popup_alert")) {
+    this.localStorage.setItem("popup_alert","[]")
+  }
   if (this.window.document.documentMode) {
     create_popup("Internet explorer is not a supported browser for this website.");
   }

@@ -1,12 +1,3 @@
-function append_alert(reason) {
-  // Get current alerts
-  var data = JSON.parse(localStorage.getItem("popup_alert"));
-  // Append our alert
-  data.append(reason);
-  // Write the alerts back
-  localStorage.setItem("popup_alert",JSON.stringify(data));
-}
-
 function delete_paste() {
   // Get the paste ID
   var path = window.location.pathname.split("/");

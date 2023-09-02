@@ -29,6 +29,11 @@ devmode = true
 [paste]
   # Paste ID length
   id_length = 8
+  [public]
+  # Number of lines to show in the Public Pastes sidebar
+  lines_shown = 3
+  # Characters to show in the Public Pastes sidebar
+  characters_shown = 100
 
 [token]
   # Token ID length
@@ -44,7 +49,5 @@ devmode = true
   # This affects new sign ups only!
   password_min = 8
   password_max = 512
-  # Salt length, default should be fine (Username is also part of salt)
-  salt_length = 32
   # Hash iteration count. This affects everyone, change with caution!
   hash_iterations = 500

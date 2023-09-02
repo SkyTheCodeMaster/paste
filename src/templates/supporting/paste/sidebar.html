@@ -1,0 +1,12 @@
+<div class="box">
+  <h1 class="title is-4">Public Pastes</h1>
+  <hr>
+  {{ public_pastes | safe }}
+</div>
+{% if self_pastes %}
+  <div class="box">
+    <h1 class="title is-4">Your Pastes</h1>
+    <hr>
+    {{ self_pastes | safe }}
+  </div>
+{% endif %}

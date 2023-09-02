@@ -81,6 +81,7 @@ function set_button() {
 function set_username_check() {
   var predicate =
     usern_exists_bad ||
+    usern_chars_bad  ||
     usern_length_bad;
   set_check("signup_username_check",!predicate)
 }

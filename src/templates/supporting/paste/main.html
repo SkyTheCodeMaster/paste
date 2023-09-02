@@ -1,0 +1,38 @@
+<!-- Paste main box for viewing pastes -->
+<div class="box">
+  <div class="box">
+    <div class="level" style="margin-bottom:0px;">
+      <div class="level-left">
+        <div class="level-item">
+          <h1 class="title">{{ paste.title }}</h1>
+        </div>
+        <div class="level-item">
+          <p class="title is-4" title="{{ paste.relative_time }}">{{ paste.real_time }}</p>
+        </div>
+      </div>
+        <div class="level-right">
+          <div class="buttons are-small">
+          <a class="button is-light" onclick="copy()" title="Copy the raw paste text into the clipboard">Copy</a>
+          <a class="button is-light" href="/raw/{{ paste.id }}" title="Open the raw paste text in a new tab." target="_blank">Raw</a>
+          <a class="button is-light" href="/dl/{{ paste.id }}" title="Download the paste content in a text file.">Download</a>
+          {% if authorized %}
+            <a class="button is-dangerous" onclick="delete_paste()" title="Delete the paste.">Delete</a>
+            <a class="button is-info" href="/edit/{{ paste.id }}" title="Edit the paste.">Edit</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="box has-background-light">
+    <div class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <span class="tag has-background-grey-light">{{ paste.syntax }}</span>
+        </div>
+        <div class="level-item">
+          <span class="tag has-background-grey-light">{{ paste.size }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

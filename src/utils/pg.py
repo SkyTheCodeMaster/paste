@@ -34,7 +34,6 @@ with open("config.toml") as f:
   USER_TOKEN_LENGTH=config["user"]["token_length"]
   USERNAME_MIN_LENGTH = config["user"]["name_min"]
   USERNAME_MAX_LENGTH = config["user"]["name_max"]
-  USER_SALT_LENGTH = config["user"]["salt_length"]
 
 class PGUtils:
   def __init__(self, pool: asyncpg.Pool = None):

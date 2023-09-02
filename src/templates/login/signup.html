@@ -5,6 +5,8 @@
     <link rel="stylesheet" href="/css/bulma.css">
     <script src="/scripts/common.js" async></script>
     <script src="/scripts/signup.js" async></script>
+    <script src="/scripts/highlight.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/shiki@0.14.1/dist/index.jsdelivr.iife.min.js" async></script>
     <script src="https://kit.fontawesome.com/e37f1fa619.js" async crossorigin="anonymous"></script>
     <div 
       username-min-length={{ config.USERNAME_MIN_LENGTH }}
@@ -100,9 +102,7 @@
       </div>
       <div class="column is-3"></div>
       <div class="column is-3">
-        <div class="box">
-          <p>public pastes here</p>
-        </div>
+        {{ paste_sidebar | safe }}
       </div>
     </div>
 

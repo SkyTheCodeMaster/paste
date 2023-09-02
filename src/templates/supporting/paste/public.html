@@ -1,0 +1,13 @@
+<!-- The box for the side bar -->
+<div class="box">
+  <div>
+    <!-- Title Bar -->
+    <a href="/{{ id }}">
+      <h1 class="title is-5" style="float:left;margin-bottom:3px;">{{ name }} | {{ date }} | </h1>
+      <h1 class="title is-6" style="float:left;margin-left:3px;margin-bottom:0px;"> {{ size }} | {{ syntax }}</h1>
+      <div style="clear:both;margin-bottom:0px;"></div>
+    </a>
+  </div>
+  <hr style="margin-top: 0px; margin-bottom:0px;">
+  <p class="highlight-me lang-{{ syntax }}" style="margin-top:0px;">{{ content }}</p>
+</div>

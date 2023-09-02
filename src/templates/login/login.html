@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sky Paste</title>
+    <link rel="stylesheet" href="/css/bulma.css">
+    <script src="/scripts/common.js" async></script>
+    <script src="/scripts/login.js" async></script>
+    <script src="/scripts/highlight.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/shiki@0.14.1/dist/index.jsdelivr.iife.min.js" async></script>
+    <script src="https://kit.fontawesome.com/e37f1fa619.js" async crossorigin="anonymous"></script>
+    <div 
+      username-min-length={{ config.USERNAME_MIN_LENGTH }}
+      username-max-length={{ config.USERNAME_MAX_LENGTH }}
+      id="username_data">
+    </div>
+  </head>
+  <body>
+    {{ navbar | safe }}
+
+    <div class="columns" style="margin:5px;">
+      <div class="column is-3"></div>
+      <div class="column is-3">
+        <div class="box">
+          <h1 class="title" style="text-align: center;">Log In</h1>
+
+          <div class="field">
+            <label class="label">Username</label>
+            <div class="control has-icons-left has-icons-right">
+              <input class="input" type="text" placeholder="Enter a username" id="login_username_text">
+              <span class="icon is-small is-left">
+                <i class="fas fa-user"></i>
+              </span>
+              <span class="icon is-small is-right">
+                <i class="fas fa-x" style="color:red" id="login_username_check"></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="field" style="display:block;" id="login_username_warn">
+            <span class="icon is-small" style="float:left; padding-top: 6px;">
+              <i class="fas fa-x" style="color: red"></i>
+            </span>
+            <p id="login_username_warn_reason">Username is too short, minimum {{ config.USERNAME_MIN_LENGTH }}!</p>
+          </div>
+
+          <div class="field">
+            <label class="label">Password</label>
+            <div class="control has-icons-left">
+              <input class="input" type="password" placeholder="Enter a password" id="login_password_text">
+              <span class="icon is-small is-left">
+                <i class="fas fa-lock"></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="field" style="margin:5px 35%; width:30%; scale:1.25;">
+            <label class="checkbox">
+              <input type="checkbox" id="login_remember_me">
+              Remember Me
+            </label>
+          </div>
+
+          <div class="field" style="margin:5px 35%; width:30%">
+            <div class="control">
+              <button class="button is-link" id="login_button" style="width:100%" onclick="login()">Log In</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="column is-3"></div>
+      <div class="column is-3">
+        {{ paste_sidebar | safe }}
+      </div>
+    </div>
+  </body>
+</html>
