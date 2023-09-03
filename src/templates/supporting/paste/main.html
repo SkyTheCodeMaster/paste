@@ -38,8 +38,17 @@
       </div>
     </div>
     <div class="box main-paste-code">
-      <!-- text box -->
-      <p class="highlight-me lang-{{ paste.syntax }}" style="padding:0px; margin:0px;" data-is-main-paste>{{ paste.text }}</p>
+        <!-- line numbers -->
+          <div class="line-numbers" style="float: left;">
+            {% for x in paste.linerange %}
+              <a onclick="line_callback({{ forloop.counter }})" data-ln="{{ forloop.counter }}">{{ forloop.counter }}.</a><br>
+            {% endfor %}
+          </div>
+        <!-- text box -->
+        <div>
+          <p class="highlight-me lang-{{ paste.syntax }}" style="padding:0px; margin:0px;" data-is-main-paste id="main_paste_text_block">{{ paste.text }}</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>

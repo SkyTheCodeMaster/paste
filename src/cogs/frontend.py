@@ -323,6 +323,7 @@ async def get_paste(request: web.Request) -> web.Response:
       "id": paste.id,
       "Syntax": paste.syntax.title(),
       "syntax": paste.syntax,
+      "linerange": range(text_content.count("\n")+1),
     }
     ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main.html"].render(Context(_ctx_dict))
