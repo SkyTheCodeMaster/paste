@@ -82,6 +82,9 @@ function add(arr, ele) {
 function deduplicate_hash() {
   var new_lines = [];
   var lines = window.location.hash.substring(1).split(",");
+  if (lines.length == 1) {
+    return;
+  } 
   for (let line of lines) {
     if (line.includes("-")) {
       var out = RANGE_REGEX.exec(line);
@@ -94,7 +97,7 @@ function deduplicate_hash() {
       add(new_lines, Number(line));
     }
   }
-  new_lines.sort();
+  new_lines.sort((a,b) => a-b);
   remove(new_lines,0);
   final = crunch(new_lines);
   window.location.hash = final.join(",");
@@ -165,6 +168,9 @@ function line_callback(line_number) {
     window.location.hash += ","+range;
   }
   deduplicate_hash();
+  if (window.location.hash.substring(1) == "undefined-NaN") {
+    window.location.hash = "";
+  }
   rehighlight_main_code();
 }
 
