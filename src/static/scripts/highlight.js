@@ -174,12 +174,34 @@ function line_callback(line_number) {
   rehighlight_main_code();
 }
 
+/* no worky
+function fix_html(s) {
+  s = s.replace('&amp;','&');
+  s = s.replace('&lt;','<');
+  s = s.replace('&gt;','>');
+  s = s.replace('&quot;','"');
+  s = s.replace("&#39;","'");
+  return s;
+}
+*/
+
+function fix_html(s) {
+  escapes = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    "&#39;": "'" 
+  }
+  return s.replace(/(?:&amp;|&lt;|&gt;|&quot;|&#39;)/g, chr => escapes[chr]);
+}
+
 function rehighlight_main_code() {
   var block = document.getElementById("main_paste_text_block");
   const language = get_highlight_language(block.classList);
   var lineopts = generate_focus();
   const code = Highlighter.codeToHtml(main_paste_code, {lang: language, lineOptions: lineopts});
-  block.innerHTML = code;
+  block.innerHTML = fix_html(code);
 }
 
 window.addEventListener("keydown", function(e) {
@@ -190,9 +212,17 @@ window.addEventListener("keyup", function(e) {
 })
 
 window.addEventListener("load", function() {
+  // Identify required languages
+  var required = [];
+  for (block of this.document.getElementsByClassName("highlight-me")) {
+    const language = get_highlight_language(block.classList);
+    add(required, language);
+  }
+
   shiki.
     getHighlighter({
-      theme: "light-plus"
+      theme: "light-plus",
+      langs: required
     })
     .then(highlighter => {
       Highlighter = highlighter;
@@ -203,11 +233,11 @@ window.addEventListener("load", function() {
           var lineopts = generate_focus();
           main_paste_code = block.innerHTML;
           const code = highlighter.codeToHtml(block.innerHTML, {lang: language, lineOptions: lineopts});
-          block.innerHTML = code;
+          block.innerHTML = code//fix_html(code);
         } else {
           const language = get_highlight_language(block.classList);
           const code = highlighter.codeToHtml(block.innerHTML, { lang: language });
-          block.innerHTML = code;
+          block.innerHTML = fix_html(code);
         }
       }
     });

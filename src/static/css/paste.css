@@ -41,19 +41,3 @@
 .main-paste-code .line-numbers a {
   color: hsl(0, 0%, 48%); /* has-text-grey */
 }
-/*
-.main-paste-code code .line::before {
-  content: counter(step)".";
-  counter-increment: step;
-  width: 1rem;
-  margin-right: 0.5rem;
-  margin-left:0;
-  padding-left:0px;
-  margin-top:0px;
-  padding-top:0px;
-  display: inline-block;
-  text-align: right;
-  /* https://bulma.io/documentation/helpers/color-helpers */
-  /*color: hsl(0, 0%, 48%); /* has-text-grey */
-  /*background-color: hsl(0, 0%, 71%); /* has-background-grey-light */ 
-/*}

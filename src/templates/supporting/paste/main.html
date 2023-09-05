@@ -10,17 +10,17 @@
           <p class="title is-4" title="{{ paste.relative_time }}">{{ paste.real_time }}</p>
         </div>
       </div>
-        <div class="level-right">
-          <div class="buttons are-small">
+      <div class="level-right">
+        <div class="buttons are-small">
           <a class="button is-light" onclick="copy()" title="Copy the raw paste text into the clipboard">Copy</a>
           <a class="button is-light" href="/raw/{{ paste.id }}" title="Open the raw paste text in a new tab." target="_blank">Raw</a>
-          <a class="button is-light" href="/dl/{{ paste.id }}" title="Download the paste content in a text file.">Download</a>
-          {% if logged_in %}
-            <a class="button is-light" title="Make a copy of this paste in your account." disabled>Clone</a>
-          {% endif %}
-          {% if authorized %}
+          <a class="button is-light" href="/dl/{{ paste.id }}" title="Download the paste content in a text file.">Download</a> 
+          {% if logged_in %} 
+            <a class="button is-light" title="Make a copy of this paste in your account." disabled>Clone</a> 
+          {% endif %} 
+          {% if authorized %} 
             <a class="button is-info" href="/edit/{{ paste.id }}" title="Edit the paste.">Edit</a>
-            <a class="button is-danger" onclick="delete_paste()" title="Delete the paste.">Delete</a>
+            <a class="button is-danger" onclick="delete_paste()" title="Delete the paste.">Delete</a> 
           {% endif %}
         </div>
       </div>
@@ -38,16 +38,15 @@
       </div>
     </div>
     <div class="box main-paste-code">
-        <!-- line numbers -->
-          <div class="line-numbers" style="float: left;">
-            {% for x in paste.linerange %}
-              <a onclick="line_callback({{ forloop.counter }})" data-ln="{{ forloop.counter }}">{{ forloop.counter }}.</a><br>
-            {% endfor %}
-          </div>
-        <!-- text box -->
-        <div>
-          <p class="highlight-me lang-{{ paste.syntax }}" style="padding:0px; margin:0px;" data-is-main-paste id="main_paste_text_block">{{ paste.text }}</p>
-        </div>
+      <!-- line numbers -->
+      <div class="line-numbers" style="float: left;"> 
+        {% for x in paste.linerange %} 
+          <a onclick="line_callback({{ forloop.counter }})" data-ln="{{ forloop.counter }}">{{ forloop.counter }}.</a><br> 
+        {% endfor %}
+      </div>
+      <!-- text box -->
+      <div>
+        <p class="highlight-me lang-{{ paste.syntax }}" style="padding:0px; margin:0px;" data-is-main-paste id="main_paste_text_block">{{ paste.text }}</p>
       </div>
     </div>
   </div>

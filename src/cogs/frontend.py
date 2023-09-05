@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 import datetime
-import tomllib
 import os
 import pathlib
+import tomllib
 from typing import TYPE_CHECKING
 
 import humanize
 from aiohttp import web
-from django.conf import settings as django_settings
 from django import setup as django_setup
+from django.conf import settings as django_settings
 from django.template import Context, Engine
+
 from utils.paste import Paste
 from utils.token import Token
 from utils.utils import Visibility
 
 if TYPE_CHECKING:
   from typing import Any, Union
+
   import asyncpg
   from django.template import Template
+
   from utils.pg import PGUtils
   from utils.user import User
 
