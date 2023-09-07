@@ -179,7 +179,8 @@ async def get_index(request: web.Request) -> web.Response:
     **grand_context, 
     "navbar":navbar,
     "paste_sidebar": paste_sidebar,
-    "authorized": authorized
+    "authorized": authorized,
+    "create_paste": sup_templates["paste/create.html"].source
   }
   rendered = templates["index.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")

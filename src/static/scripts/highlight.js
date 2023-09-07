@@ -201,7 +201,7 @@ function rehighlight_main_code() {
   const language = get_highlight_language(block.classList);
   var lineopts = generate_focus();
   const code = Highlighter.codeToHtml(main_paste_code, {lang: language, lineOptions: lineopts});
-  block.innerHTML = fix_html(code);
+  block.innerHTML = code//fix_html(code);
 }
 
 window.addEventListener("keydown", function(e) {
@@ -231,13 +231,13 @@ window.addEventListener("load", function() {
           // This is the main paste
           const language = get_highlight_language(block.classList);
           var lineopts = generate_focus();
-          main_paste_code = block.innerHTML;
-          const code = highlighter.codeToHtml(block.innerHTML, {lang: language, lineOptions: lineopts});
+          main_paste_code = block.innerText;
+          const code = highlighter.codeToHtml(block.innerText, {lang: language, lineOptions: lineopts});
           block.innerHTML = code//fix_html(code);
         } else {
           const language = get_highlight_language(block.classList);
-          const code = highlighter.codeToHtml(block.innerHTML, { lang: language });
-          block.innerHTML = fix_html(code);
+          const code = highlighter.codeToHtml(block.innerText, { lang: language });
+          block.innerHTML = code//fix_html(code);
         }
       }
     });

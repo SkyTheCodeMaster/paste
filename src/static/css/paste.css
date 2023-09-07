@@ -41,3 +41,14 @@
 .main-paste-code .line-numbers a {
   color: hsl(0, 0%, 48%); /* has-text-grey */
 }
+
+.paste-textarea {
+  height: auto;
+  resize: none;
+  overflow: hidden;
+  min-height: 300px;
+}
+
+.highlight-me {
+  white-space: pre-wrap;
+}
