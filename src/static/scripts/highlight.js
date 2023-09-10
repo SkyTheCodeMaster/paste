@@ -38,7 +38,6 @@ function generate_focus() {
 var main_paste_code;
 var last_line_clicked;
 var shift = false;
-var Highlighter;
 
 function is_in_range(number, range) {
   if (range.includes("-")) {
@@ -174,34 +173,12 @@ function line_callback(line_number) {
   rehighlight_main_code();
 }
 
-/* no worky
-function fix_html(s) {
-  s = s.replace('&amp;','&');
-  s = s.replace('&lt;','<');
-  s = s.replace('&gt;','>');
-  s = s.replace('&quot;','"');
-  s = s.replace("&#39;","'");
-  return s;
-}
-*/
-
-function fix_html(s) {
-  escapes = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    "&#39;": "'" 
-  }
-  return s.replace(/(?:&amp;|&lt;|&gt;|&quot;|&#39;)/g, chr => escapes[chr]);
-}
-
 function rehighlight_main_code() {
   var block = document.getElementById("main_paste_text_block");
   const language = get_highlight_language(block.classList);
   var lineopts = generate_focus();
-  const code = Highlighter.codeToHtml(main_paste_code, {lang: language, lineOptions: lineopts});
-  block.innerHTML = code//fix_html(code);
+  const code = hjsHighlighter.codeToHtml(main_paste_code, {lang: language, lineOptions: lineopts});
+  block.innerHTML = code;
 }
 
 window.addEventListener("keydown", function(e) {
@@ -218,6 +195,7 @@ window.addEventListener("load", function() {
     const language = get_highlight_language(block.classList);
     add(required, language);
   }
+  remove(required, "plaintext");
 
   shiki.
     getHighlighter({
@@ -225,7 +203,6 @@ window.addEventListener("load", function() {
       langs: required
     })
     .then(highlighter => {
-      Highlighter = highlighter;
       for (block of this.document.getElementsByClassName("highlight-me")) {
         if (block.getAttribute("data-is-main-paste") != null) {
           // This is the main paste
@@ -233,11 +210,11 @@ window.addEventListener("load", function() {
           var lineopts = generate_focus();
           main_paste_code = block.innerText;
           const code = highlighter.codeToHtml(block.innerText, {lang: language, lineOptions: lineopts});
-          block.innerHTML = code//fix_html(code);
+          block.innerHTML = code;
         } else {
           const language = get_highlight_language(block.classList);
           const code = highlighter.codeToHtml(block.innerText, { lang: language });
-          block.innerHTML = code//fix_html(code);
+          block.innerHTML = code;
         }
       }
     });

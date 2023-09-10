@@ -29,9 +29,9 @@ function create_popup(reason) {
   div.id = id;
 
   div.style.position = "fixed";
-  div.style.top = "0";
-  div.style.right = "40%";
-  div.style.width = "20%";
+  div.style.top =    "25px";
+  div.style.right =  "40%";
+  div.style.width =  "20%";
   div.style.zIndex = "100";
 
   const notification = document.createElement("div")
@@ -74,16 +74,6 @@ window.addEventListener("load",function() {
   for (const reason of arr) {
     create_popup(reason);
   }
-});
-
-window.addEventListener("load", function() {
-  try {
-    var textarea = document.getElementById("paste_edit_textarea");
-    textarea.addEventListener("input", function() {
-      textarea.style.height = "auto";
-      textarea.style.height = textarea.scrollHeight + "px";
-    })
-  } catch {}
 });
 
 document.addEventListener("keydown", function(e) {

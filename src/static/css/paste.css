@@ -47,8 +47,42 @@
   resize: none;
   overflow: hidden;
   min-height: 300px;
+  position: absolute;
+  top:0;
+  color: black; 
+  background-color: transparent;
+  caret-color: black;
+  font: 20px "monospace", sans-serif;
+}
+
+#paste-output {
+  min-height: 160px; 
+  padding-top:15px; 
+  padding-left: 15px;
+  font: 20px "monospace", sans-serif;
+}
+
+#paste-output .shiki {
+  padding-top:  0px; 
+  padding-left: 0px;
+  font: 20px "monospace", sans-serif;
+}
+
+#paste-output .shiki code .line {
+  padding-top:  0px; 
+  padding-left: 0px;
+  font: 20px "monospace", sans-serif;
 }
 
 .highlight-me {
   white-space: pre-wrap;
+}
+
+#paste-output {
+  white-space: pre-wrap;
+}
+
+#synselect-dropdown-content {
+  height: 300px;
+  overflow-y: scroll;
 }

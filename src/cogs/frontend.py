@@ -41,6 +41,7 @@ with open("config.toml") as f:
   PASSWORD_MAX_LENGTH = config["user"]["password_max"]
   PUBLIC_PASTE_LINES_SHOWN = config["paste"]["public"]["lines_shown"]
   PUBLIC_PASTE_CHARS_SHOWN = config["paste"]["public"]["characters_shown"]
+  PASTE_SIDEBAR_NUM_SHOW = config["paste"]["show_number"]
   grand_context["public_url"] = config["srv"]["publicurl"]
 
 # Load all of the templates in the static folder.
@@ -88,12 +89,19 @@ latest_pastes_cache_age: int = 0
 
 def get_first_x_lines(input: str, x: int) -> str:
   l: list[str] = input.split("\n")
-  return "\n".join(l[:x])
+  # I've noticed that 42 chars is better for not making scrollbars on fullhd monitors
+  k = [s[:42] for s in l]
+  return "\n".join(k[:x])
 
 def process_paste_content(input: str) -> str:
   "Trim paste content and make it nice"
   trimmed_lines = get_first_x_lines(input, PUBLIC_PASTE_LINES_SHOWN)
   return trimmed_lines[:PUBLIC_PASTE_CHARS_SHOWN]
+
+async def refresh_sidebar_pastes(conn: asyncpg.Connection, count: int = 8):
+  global latest_pastes_cache_age, latest_pastes_cache
+  latest_pastes_cache = [Paste.from_record(record) for record in await conn.fetch("SELECT * FROM Pastes WHERE Visibility = 1 ORDER BY Created DESC LIMIT $1",count)]
+  latest_pastes_cache_age = int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + 30
 
 async def prepare_sidebar(request: web.Request, count: int = 8) -> str:
   global latest_pastes_cache_age, latest_pastes_cache
@@ -169,7 +177,7 @@ async def get_index(request: web.Request) -> web.Response:
   # Load the index.html template
   pg: PGUtils = request.app.pg
 
-  paste_sidebar = await prepare_sidebar(request)
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
   navbar = await prepare_navbar(request)
 
   token = await pg.handle_auth(request,strict_password=True,no_exist_ok=True)
@@ -191,7 +199,7 @@ async def get_index(request: web.Request) -> web.Response:
   if config["devmode"]:
     reload_files()
   # Load the index.html template
-  paste_sidebar = await prepare_sidebar(request)
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
   navbar = await prepare_navbar(request)
   ctx_dict: dict[str,Any] = {
     **grand_context, 
@@ -211,7 +219,7 @@ async def get_index(request: web.Request) -> web.Response:
   if config["devmode"]:
     reload_files()
   # Load the index.html template
-  paste_sidebar = await prepare_sidebar(request)
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
   navbar = await prepare_navbar(request)
   ctx_dict: dict[str,Any] = {
     **grand_context, 
@@ -310,7 +318,7 @@ async def get_paste(request: web.Request) -> web.Response:
   else:
     text_content = False
 
-  paste_sidebar = await prepare_sidebar(request)
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
   navbar = await prepare_navbar(request)
   _ctx_dict: dict[str,Any] = {
     "authorized": authorized,
@@ -328,6 +336,7 @@ async def get_paste(request: web.Request) -> web.Response:
       "Syntax": paste.syntax.title(),
       "syntax": paste.syntax,
       "linerange": range(text_content.count("\n")+1),
+      "tags": paste.tags and paste.tags.split(",") or False
     }
     ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main.html"].render(Context(_ctx_dict))

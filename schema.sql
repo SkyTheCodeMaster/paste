@@ -7,8 +7,7 @@ CREATE TABLE IF NOT EXISTS Users (
   Password TEXT,
   Email TEXT,
   id BIGSERIAL,
-  Token TEXT,
-  TokenReset TIMESTAMP WITHOUT TIME ZONE
+  Token TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Pastes (
@@ -20,6 +19,7 @@ CREATE TABLE IF NOT EXISTS Pastes (
   Created BIGINT,
   Modified BIGINT,
   Syntax TEXT,
+  Tags TEXT
 );
 
 CREATE TABLE IF NOT EXISTS APITokens (

@@ -221,9 +221,9 @@ class PGUtils:
       await conn.execute("""
         INSERT INTO 
           Pastes
-            (id,creator,content,visibility,title,created,modified,syntax) 
+            (id,creator,content,visibility,title,created,modified,syntax,tags) 
         VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8);
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9);
         """,
         pasteID,
         token.owner.id,
@@ -232,7 +232,8 @@ class PGUtils:
         paste.title,
         self._time(),
         self._time(),
-        paste.syntax
+        paste.syntax,
+        paste.tags
       )
       return (await self.get_pastes_from_search(id=pasteID))[0],""
 
@@ -251,7 +252,25 @@ class PGUtils:
     if token.owner.id != nPaste.creator:
       return False
     async with self.pool.acquire() as conn:
-      await conn.execute("UPDATE Pastes SET Content = $1, Title = $2, Visibility = $3, Modified=$5, Syntax = $6 WHERE id = $4",paste.data,paste.title,paste.visibility,nPaste.id,self._time(),paste.syntax)
+      await conn.execute("""UPDATE 
+                              Pastes 
+                            SET 
+                              Content = $1, 
+                              Title = $2, 
+                              Visibility = $3, 
+                              Modified=$5, 
+                              Syntax = $6,
+                              tags = $7
+                            WHERE 
+                              id = $4""",
+                         paste.data,
+                         paste.title,
+                         paste.visibility,
+                         nPaste.id,
+                         self._time(),
+                         paste.syntax,
+                         paste.tags
+      )
       return (await self.get_pastes_from_search(id=nPaste.id))[0]
 
   async def delete_paste(self,paste: Paste, token: Token) -> bool:
@@ -279,14 +298,14 @@ class PGUtils:
     pastes = await self.get_pastes_from_creator(creator=user.id)
     # Create a tmp directory
     try:
-      await aioshutil.rmtree(f"/tmp/{user.id}/")
+      await aioshutil.rmtree(f"/tmp/paste_server/{user.id}/")
     except: pass
-    await aos.makedirs(f"/tmp/{user.id}/",exist_ok=True)
+    await aos.makedirs(f"/tmp/paste_server/{user.id}/",exist_ok=True)
     for paste in pastes:
-      async with aiofiles.open(f"/tmp/{user.id}/{paste.id} ({paste.title}).txt","w") as f:
+      async with aiofiles.open(f"/tmp/paste_server/{user.id}/{paste.id} ({paste.title}).txt","w") as f:
         await f.write(paste.text_content)
-    await aioshutil.make_archive(f"/tmp/{user.id}","zip",f"/tmp/{user.id}/")
-    return f"/tmp/{user.id}.zip"
+    await aioshutil.make_archive(f"/tmp/paste_server/{user.id}","zip",f"/tmp/paste_server/{user.id}/")
+    return f"/tmp/paste_server/{user.id}.zip"
 
   async def delete_user(self, user: User, *, delete_pastes: bool = True) -> bool:
     user_id = user.id

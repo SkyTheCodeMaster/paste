@@ -20,7 +20,27 @@ with open("config.toml") as f:
   PUBLIC_URL = tomllib.loads(f.read())["srv"]["publicurl"]
 
 class Paste:
-  def __init__(self,*,id: str, creator: int,data: bytes, visibility: Union[Visibility,int], title: str, created: int = None, modified: int = None, syntax: str = None) -> None:
+  id: str
+  creator: int
+  data: bytes
+  visibility: Union[Visibility,int]
+  title: str
+  created: int
+  modified: int
+  syntax: str 
+  tags: str
+
+  def __init__(self,*,
+    id: str, 
+    creator: int,
+    data: bytes, 
+    visibility: Union[Visibility,int], 
+    title: str, 
+    created: int = None, 
+    modified: int = None, 
+    syntax: str = None, 
+    tags: str = None
+  ) -> None:
     self.id = id
     self.creator = creator
     self.data = data
@@ -29,6 +49,7 @@ class Paste:
     self.created = created
     self.modified = modified
     self.syntax = syntax
+    self.tags = tags
   
   @property
   def url(self) -> str:
@@ -45,6 +66,7 @@ class Paste:
       "created": self.created,
       "modified": self.modified,
       "syntax": self.syntax,
+      "tags": self.tags,
     }
     return json.dumps(out)
 
@@ -84,6 +106,7 @@ class Paste:
       created=record["created"],
       modified=record["modified"],
       syntax=record["syntax"],
+      tags=record["tags"],
     )
     return paste
 
@@ -97,6 +120,7 @@ class Paste:
       created=self.created,
       modified=self.modified,
       syntax=self.syntax,
+      tags=self.tags,
     )
     return newPaste
 
@@ -110,4 +134,5 @@ class Paste:
     self.created = paste.created
     self.modified = paste.modified,
     self.syntax = paste.syntax
+    self.tags = paste.tags
     return self
