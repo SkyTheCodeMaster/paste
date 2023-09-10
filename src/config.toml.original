@@ -29,11 +29,16 @@ devmode = true
 [paste]
   # Paste ID length
   id_length = 8
+  # How many pastes to show in the sidebar
+  show_number = 8
+
   [public]
   # Number of lines to show in the Public Pastes sidebar
   lines_shown = 3
   # Characters to show in the Public Pastes sidebar
   characters_shown = 100
+  # Number of characters to show in the sidebar title.
+  name_max_length = 20
 
 [token]
   # Token ID length

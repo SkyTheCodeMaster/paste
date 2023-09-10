@@ -2,7 +2,7 @@ var pseHighlighter;
 var selected_language = "plaintext";
 var paste_tag;
 
-function edit_paste(submit_button, paste_id) {
+function create_paste(submit_button) {
   const vis_enum = {
     "public": 1,
     "unlisted": 2,
@@ -18,8 +18,7 @@ function edit_paste(submit_button, paste_id) {
     "content": paste_content,
     "syntax": selected_language,
     "tags": paste_tag.items.join(","),
-    "visibility": paste_visibility,
-    "id": paste_id
+    "visibility": paste_visibility
   }
 
   console.log(packet);
@@ -29,12 +28,12 @@ function edit_paste(submit_button, paste_id) {
 
   var request = new XMLHttpRequest();
 
-  request.open("POST","/api/paste/edit/");
+  request.open("POST","/api/paste/create/");
   request.setRequestHeader("Content-Type","application/json");
   request.send(JSON.stringify(packet));
   request.onload = function() {
     if (request.status == 200) {
-      append_alert("Successfully edited paste!");
+      append_alert("Successfully created paste!");
       window.location.replace("/" + request.responseText);
     } else if (request.status == 400) {
       // unset disabled/loading
@@ -82,8 +81,6 @@ window.addEventListener("load", function() {
       var languages = highlighter.getLoadedLanguages();
       languages.sort();
       var dropdown_content = document.getElementById("synselect-dropdown-languages");
-      var preselect = dropdown_content.getAttribute("data-preselect");
-      selected_language = preselect;
       function populate_dropdown(langs) {
         dropdown_content.innerHTML = "";
         langs.sort();

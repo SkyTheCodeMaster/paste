@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/css/paste.css">
     <script src="/scripts/common.js" async></script>
     <script src="/scripts/highlight.js" async></script>
-    <script src="/scripts/pastecreate.js" async></script>
+    <script src="/scripts/pasteedit.js" async></script>
     <script src="/scripts/vendored/bulma-tagsinput.min.js" async></script>
     <script src="/scripts/vendored/shiki.js" async></script>
     <script src="https://kit.fontawesome.com/e37f1fa619.js" async crossorigin="anonymous"></script>
@@ -19,7 +19,7 @@
     <div class="columns" style="margin:5px;">
       <div class="column is-1"></div>
       <div class="column is-7">
-        {{ create_paste | safe }}
+        {{ edit_paste | safe }}
       </div>
       <div class="column is-1"></div>
       <div class="column is-3">

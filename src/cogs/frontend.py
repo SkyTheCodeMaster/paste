@@ -42,6 +42,7 @@ with open("config.toml") as f:
   PUBLIC_PASTE_LINES_SHOWN = config["paste"]["public"]["lines_shown"]
   PUBLIC_PASTE_CHARS_SHOWN = config["paste"]["public"]["characters_shown"]
   PASTE_SIDEBAR_NUM_SHOW = config["paste"]["show_number"]
+  PUBLIC_PASTE_NAME_LENGTH = config["paste"]["public"]["name_max_length"]
   grand_context["public_url"] = config["srv"]["publicurl"]
 
 # Load all of the templates in the static folder.
@@ -114,7 +115,7 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> str:
       latest_pastes_cache_age = current_time + 30
     public_pastes: list[str] = [
       sup_templates["paste/public.html"].render(Context({
-        "name":paste.title,
+        "name":paste.title if len(paste.title) < PUBLIC_PASTE_NAME_LENGTH  else f"{paste.title[:PUBLIC_PASTE_NAME_LENGTH ]}…",
         "id": paste.id,
         "date":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
         "size":humanize.naturalsize(len(paste.data),gnu=True),
@@ -286,6 +287,64 @@ async def get_raw_paste(request: web.Request) -> web.Response:
   else:
     return web.Response(status=404)
 
+@routes.get("/edit/{tail:\w+$}")
+async def get_paste(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  pasteID: str = request.path.removeprefix("/edit/")
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  paste: Paste = await pg.get_pastes_from_search(id=pasteID)
+
+  text_content: Union[str,False] = ""
+  authorized:   bool = False
+  logged_in:    bool = False
+  if paste:
+    token = await pg.handle_auth(request,no_exist_ok=True)
+    paste = paste[0]
+    p_owner: User = await paste.get_creator(pg)
+    if p_owner != token.owner:
+      text_content = False
+    else:
+      text_content = paste.text_content
+
+    authorized = type(token) is Token and token.owner == p_owner
+    logged_in  = type(token) is Token
+  else:
+    text_content = False
+
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+  _ctx_dict: dict[str,Any] = {
+    "authorized": authorized,
+    "logged_in": logged_in,
+  }
+  if text_content:
+    _ctx_dict["paste"] = {
+      **grand_context, 
+      "text":text_content,
+      "title": paste.title,
+      "Syntax": paste.syntax.title(),
+      "syntax": paste.syntax,
+      "tags": paste.tags or False,
+      "visibility": paste.visibility,
+      "id": paste.id,
+    }
+    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
+    ctx_dict["edit_paste"] = sup_templates["paste/edit.html"].render(Context(_ctx_dict))
+  else:
+    _ctx_dict["paste"] = {
+      **grand_context, 
+      "title": "The paste you are looking for either does not exist, or is private."
+    }
+    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
+    ctx_dict["edit_paste"] = sup_templates["paste/main_no_exist.html"].render(Context(_ctx_dict))
+
+  rendered = templates["paste_edit.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
+
 
 @routes.get("/{tail:\w+$}")
 async def get_paste(request: web.Request) -> web.Response:
@@ -347,8 +406,6 @@ async def get_paste(request: web.Request) -> web.Response:
     }
     ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main_no_exist.html"].render(Context(_ctx_dict))
-
-
 
   return web.Response(body=templates["paste.html"].render(Context(ctx_dict)),content_type="text/html")
 

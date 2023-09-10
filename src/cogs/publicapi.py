@@ -198,7 +198,7 @@ async def api_paste_edit(request: web.Request) -> web.Response:
     return web.Response(status=401,body="invalid token")
 
   paste.title = data.get("title",paste.title)
-  paste.data = data.get("content",paste.data)
+  paste.data = (data.get("content",paste.data)).encode()
   paste.tags = data.get("tags",paste.tags)
   paste.syntax = data.get("syntax",paste.syntax)
 
