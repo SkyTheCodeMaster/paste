@@ -1,6 +1,11 @@
 <div class="navbar-end">
   <div class="navbar-item">
-    <p class="name">{{ account.name }}</p>
+    <a href="/user/{{ account.name }}">
+      <img src="/api/internal/user/avatar/?user={{ account.name }}" width="28" height="28">
+    </a>
+  </div>
+  <div class="navbar-item">
+    <a class="name" style="text-decoration:none;color:white;">{{ account.Name }}</a>
   </div>
   <div class="navbar-item has-dropdown is-hoverable">
     <div class="navbar-link">
@@ -8,7 +13,7 @@
 
     <div class="navbar-dropdown is-right">
       <div class="navbar-item">
-        <a href="#">My Pastes</a>
+        <a href="/user/{{ account.name }}">My Pastes</a>
       </div>
 
       <div class="navbar-item">

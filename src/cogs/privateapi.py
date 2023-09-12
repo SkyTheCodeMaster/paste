@@ -1,15 +1,24 @@
+import datetime
 import re
+from typing import TYPE_CHECKING
 
 from aiohttp import web
-from typing import TYPE_CHECKING
-from utils.pg import PGUtils
 
+from utils.pg import PGUtils
 from utils.ratelimit import limiter
-from utils.user import User
-from utils.utils import is_hash,ahash
 from utils.token import Token
+from utils.user import User
+from utils.utils import ahash, gravatar, is_hash, resize_image_bytes
+
+if TYPE_CHECKING:
+  import aiohttp
 
 routes = web.RouteTableDef()
+
+DEFAULT_AVATAR_BYTES: bytes
+
+with open("static/images/default_avatar.png","rb") as f:
+  DEFAULT_AVATAR_BYTES = f.read()
 
 email_regex = re.compile(r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
 
@@ -99,6 +108,116 @@ async def api_internal_user_exists(request: web.Request) -> web.Response:
       return web.Response(status=200,body="true")
     else:
       return web.Response(status=200,body="false")
+    
+@routes.get("/api/internal/user/avatar/")
+async def api_internal_user_avatar(request: web.Request) -> web.Response:
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+  session: aiohttp.ClientSession = app.cs
+
+  target_user = None
+  token = await pg.handle_auth(request)
+  if "user" in request.query:
+    target_user = await pg.get_user(name=request.query["user"])
+  elif type(token) is Token:
+    target_user = token.owner
+  else:
+    return web.Response(status=400,body="either pass user in query or pass auth token")
+  
+  time = lambda: int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+  
+  async with app.pool.acquire() as conn:
+    exists = (await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM AvatarCache WHERE UserID=$1 );",target_user.id))["exists"]
+    if exists:
+      record = await conn.fetchrow("SELECT * FROM AvatarCache WHERE UserID=$1;",target_user.id)
+      if record["refresh"] > time():
+        # cache valid
+        return web.Response(body=record["avatar"], content_type="image/png")
+  
+    image_bytes: bytes = None
+
+    match (target_user.avatar_type):
+      case 0:
+        # Default user avatar.
+        image_bytes = DEFAULT_AVATAR_BYTES
+      case 1:
+        # Gravatar
+        url = await gravatar(target_user.email)
+        async with session.get(url) as resp:
+          image_bytes = await resp.read()
+      case 2:
+        # URL
+        url = target_user.avatar_url
+        if url == "INTERNAL_AVATAR":
+          record = await conn.fetchrow("SELECT Avatar FROM Avatars WHERE ID=$1;", target_user.id)
+          image_bytes = record["avatar"]
+        else:
+          async with session.get(url) as resp:
+            image_bytes = await resp.read()
+  
+    await conn.execute("""
+      INSERT INTO AvatarCache
+        (UserID, Avatar, Refresh)
+      VALUES
+        ($1, $2, $3)
+      ON CONFLICT (UserID)
+      DO
+        UPDATE SET 
+          Avatar = $2,
+          Refresh = $3;
+    """, target_user.id, image_bytes, time()+60*60*24*7) # Add a week to the cache refresh time.
+
+  return web.Response(body=image_bytes, content_type="image/png")
+
+@routes.post("/api/internal/user/setavatar/")
+async def api_internal_user_setavatar(request: web.Request) -> web.Response:
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  token = await pg.handle_auth(request, strict_password=True)
+  if type(token) is web.Response:
+    return token
+  
+  data = await request.json()
+  if not "type" in data:
+    return web.Response(body="missing type in post data",status=400)
+  
+  if data["type"] == 2 and (not "url" in data or not "bytes" in data):
+    return web.Response(body="missing url/bytes in post data",status=400)
+  
+  if data["type"] == 2 and (not "url" in data and not "bytes" in data):
+    return web.Response(body="url/bytes both in post data",status=400)
+
+  async with app.pool.acquire() as conn:
+    if data["type"] in [0,1]:
+      await conn.execute("UPDATE Users SET AvatarType = $2 WHERE ID = $1;", token.owner.id, data["type"])
+    elif data["type"] == 2:
+      if "url" in data:
+        await conn.execute("UPDATE Users SET AvatarType = 2, AvatarURL = $2 WHERE ID = $1;", token.owner.id, data["url"])
+      elif "bytes" in data:
+        resized_bytes = await resize_image_bytes(data["bytes"], (80,80))
+        await conn.execute("UPDATE Users SET AvatarType = 2, AvatarURL = 'INTERNAL_AVATAR' WHERE ID = $1;", token.owner.id)
+        await conn.execute("""
+          INSERT INTO Avatars
+            (ID, Avatar)
+          VALUES
+            ($1, $2)
+          ON CONFLICT (ID)
+          DO
+            UPDATE SET 
+              Avatar = $2;
+    """, token.owner.id, resized_bytes)
+    await conn.execute("""
+      INSERT INTO AvatarCache
+        (UserID, Refresh)
+      VALUES
+        ($1, 0)
+      ON CONFLICT (UserID)
+      DO
+        UPDATE SET 
+          Refresh = 0;
+    """)
+    return web.Response(status=200)
 
 @routes.post("/api/internal/user/edit/")
 async def api_internal_user_edit(request: web.Request) -> web.Response:

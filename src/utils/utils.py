@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
+import io
 import os
 import re
 import tomllib
 from enum import Enum
-from hashlib import sha256
 from typing import TYPE_CHECKING
 
 from aiohttp import web
+from PIL import Image
 
 if TYPE_CHECKING:
   from typing import Any, Coroutine
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 with open("config.toml") as f:
   contents = f.read()
   config = tomllib.loads(contents)
-  HASH_ITERS = config["user"]["hash_iterations"] - 1
+  HASH_ITERS = config["user"]["hash_iterations"]
 
 Visibility = Enum("VISIBILITY", ("PUBLIC", "UNLISTED", "PRIVATE"))
 
@@ -40,15 +42,33 @@ class aobject(object):
 
 def hash(passwd: str, username: str) -> str:
   "Returns a SHA256 hash of the password."
-  hash = sha256(f"{username}{passwd}".encode()).hexdigest()
-  for i in range(HASH_ITERS):
-    hash = sha256(f"{username}{passwd}{hash}".encode()).hexdigest()
-  return hash
+  salt = hashlib.sha256(username.encode()).digest()
+  output_hash = hashlib.pbkdf2_hmac("sha256", passwd.encode(), salt, HASH_ITERS).hex()
+  return output_hash
 
 async def ahash(passwd: str, username: str) -> Coroutine[Any, Any, str]:
   loop = asyncio.get_running_loop()
   result = await loop.run_in_executor(None, hash, passwd, username)
   return result
+
+async def gravatar(user_email: str) -> Coroutine[Any, Any, str]:
+  "Return a gravatar URL for the email"
+  loop = asyncio.get_running_loop()
+  def process():
+    email = user_email.strip().lower()
+    hash = hashlib.sha256(email.encode()).hexdigest()
+    return f"https://www.gravatar.com/avatar/{hash}.png?d=retro"
+  
+  return await loop.run_in_executor(None, process)
+
+async def resize_image_bytes(image_data: bytes, size: tuple[int,int] = (80,80)) -> bytes:
+  loop = asyncio.get_running_loop()
+  image = await loop.run_in_executor(None, lambda: Image.open(io.BytesIO(image_data)))
+  image = await loop.run_in_executor(None, image.resize, size)
+  output_bytes = io.BytesIO()
+  await loop.run_in_executor(None, lambda: image.save(output_bytes, format="png"))
+  return output_bytes.read()
+
 
 def is_hash(s: str) -> bool:
   "Checks if a string is a valid SHA256 hash."

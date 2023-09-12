@@ -7,8 +7,8 @@
     <script src="/scripts/common.js" async></script>
     <script src="/scripts/signup.js" async></script>
     <script src="/scripts/highlight.js" async></script>
-    <script src="https://cdn.jsdelivr.net/npm/shiki@0.14.1/dist/index.jsdelivr.iife.min.js" async></script>
-    <script src="https://kit.fontawesome.com/e37f1fa619.js" async crossorigin="anonymous"></script>
+    <script src="/scripts/vendored/shiki.js" async></script>
+    <script src="/scripts/vendored/iconify.min.js" async></script>
     <div 
       username-min-length={{ config.USERNAME_MIN_LENGTH }}
       username-max-length={{ config.USERNAME_MAX_LENGTH }}
@@ -31,17 +31,17 @@
             <div class="control has-icons-left has-icons-right">
               <input class="input" type="text" placeholder="Enter a username" id="signup_username_text">
               <span class="icon is-small is-left">
-                <i class="fas fa-user"></i>
+                <iconify-icon icon="mdi:account">
               </span>
               <span class="icon is-small is-right">
-                <i class="fas fa-x" style="color:red" id="signup_username_check"></i>
+                <iconify-icon icon="ph:x" style="color:red" id="signup_username_check"></iconify-icon>
               </span>
             </div>
           </div>
 
           <div class="field" style="display:block;" id="signup_username_warn">
             <span class="icon is-small" style="float:left; padding-top: 6px;">
-              <i class="fas fa-x" style="color: red"></i>
+              <iconify-icon icon="ph:x" style="color:red" ></iconify-icon>
             </span>
             <p id="signup_username_warn_reason">Username is too short, minimum {{ config.USERNAME_MIN_LENGTH }}!</p>
           </div>
@@ -51,17 +51,17 @@
             <div class="control has-icons-left has-icons-right">
               <input class="input" type="email" placeholder="someone@something.com" id="signup_email_text">
               <span class="icon is-small is-left">
-                <i class="fas fa-envelope"></i>
+                <iconify-icon icon="mdi:email-outline" width="24"></iconify-icon>
               </span>
               <span class="icon is-small is-right">
-                <i class="fas fa-x" style="color:red" id="signup_email_check"></i>
+                <iconify-icon icon="ph:x" style="color:red" id="signup_email_check"></iconify-icon>
               </span>
             </div>
           </div>
 
           <div class="field" style="display:block;" id="signup_email_warn">
             <span class="icon is-small" style="float:left; padding-top: 6px;">
-              <i class="fas fa-x" style="color: red"></i>
+              <iconify-icon icon="ph:x" style="color:red"></iconify-icon>
             </span>
             <p id="signup_email_warn_reason">Invalid E-Mail!</p>
           </div>
@@ -71,17 +71,17 @@
             <div class="control has-icons-left has-icons-right">
               <input class="input" type="password" placeholder="Enter a password" id="signup_password_text">
               <span class="icon is-small is-left">
-                <i class="fas fa-lock"></i>
+                <iconify-icon icon="mdi:lock"></span>
               </span>
               <span class="icon is-small is-right">
-                <i class="fas fa-x" style="color:red" id="signup_password_check"></i>
+                <iconify-icon icon="ph:x" style="color:red" id="signup_password_check"></iconify-icon>
               </span>
             </div>
           </div>
 
           <div class="field" style="display:block;" id="signup_password_warn">
             <span class="icon is-small" style="float:left; padding-top: 6px;">
-              <i class="fas fa-x" style="color: red"></i>
+              <iconify-icon icon="ph:x" style="color:red"></iconify-icon>
             </span>
             <p id="signup_password_warn_reason">Password is too short, minimum {{ config.PASSWORD_MIN_LENGTH }}!</p>
           </div>

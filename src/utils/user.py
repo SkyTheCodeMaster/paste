@@ -12,12 +12,28 @@ class User():
   email: str
   id: int
   token: str
-  def __init__(self, *, name: str = None, password: str = None, email: str = None, id: int = None, token: str = None):
+  avatar_type: int
+  avatar_url: str
+  joindate: int
+
+  def __init__(self, *, 
+               name: str = None, 
+               password: str = None, 
+               email: str = None, 
+               id: int = None, 
+               token: str = None, 
+               avatar_type: int = None, 
+               avatar_url: str = None, 
+               joindate: int = None
+              ):
     self.name = name
     self.password = password
     self.email = email
     self.id = id
     self.token = token
+    self.avatar_type = avatar_type
+    self.avatar_url = avatar_url
+    self.joindate = joindate
 
   def clone(self) -> Self:
     "Clones the user object and makes a new one."
@@ -27,6 +43,9 @@ class User():
       email=self.email,
       id=self.id,
       token=self.token,
+      avatar_type=self.avatar_type,
+      avatar_url=self.avatar_url,
+      joindate = self.joindate
     )
 
   def __eq__(self, other: Self) -> bool:
@@ -44,5 +63,8 @@ class User():
       password=record["password"],
       email=record["email"],
       id=record["id"],
-      token=record["token"]
+      token=record["token"],
+      avatar_type=record["avatartype"],
+      avatar_url=record["avatarurl"],
+      joindate=record["joindate"]
     )

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Sky Paste</title>
+    <link rel="stylesheet" href="/css/vendored/bulma.css">
+    <link rel="stylesheet" href="/css/paste.css">
+    <script src="/scripts/common.js" async></script>
+    <script src="/scripts/highlight.js" async></script>
+    <script src="/scripts/vendored/shiki.js" async></script>
+    <script src="/scripts/vendored/iconify.min.js" async></script>
+  </head>
+  <body>
+    {{ navbar | safe }}
+    <div class="columns" style="margin:5px;">
+      <div class="column is-1"></div>
+      <div class="column is-7">
+        <div class="box">
+          <div class="level" style="margin-bottom:0px;">
+            <div class="level-left">
+              <div class="level-item">
+                <img src="/api/internal/user/avatar/?user={{ user.name }}">
+              </div>
+              <div class="level-item">
+                <div style="flex-direction: column;">
+                  <h1 class="title">{{ user.name }}'s pastes</h1>
+                  <div>
+                    <iconify-icon icon="mdi:calendar-outline" width="24" height="24" title="When the user joined" style="float:left;"></iconify-icon>
+                    <p title="{{ user.relative_join }}" style="padding-left: 3px;">{{ user.join }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          {% for paste in pastes %}
+            <div class="box">
+              <div class="level">
+                <div class="level-left">
+                  <div class="level-item">
+                    <iconify-icon icon="{{ paste.visibility_icon }}" title="{{ paste.visibility_title }}"></iconify-icon>
+                    <a href="/{{ paste.id }}" style="padding-left:5px;">{{ paste.title }}</a>
+                  </div>
+                </div>
+                <div class="level-right">
+                  <div class="level-item">
+                    <div class="tags">
+                      <span class="tag" title="{{ paste.relative_time }}">{{ paste.real_time }}</span>
+                      <span class="tag">{{ paste.Syntax }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="column is-1"></div>
+      <div class="column is-3">
+        {{ paste_sidebar | safe }}
+      </div>
+    </div>
+  </body>
+</html>

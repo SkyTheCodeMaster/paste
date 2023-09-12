@@ -64,17 +64,19 @@ class PGUtils:
     else:
       return False
 
-  async def get_user(self,*,name: str = None, email: str = None, id: int = None) -> User:
+  async def get_user(self,*,name: str = None, email: str = None, id: int = None) -> User|None:
     "Get a user from either username, email, or the ID, and return a User object."
     async with self.pool.acquire() as conn:
       if name:
-        record = await conn.fetchrow("SELECT * FROM Users WHERE Username LIKE $1", name)
+        record = await conn.fetchrow("SELECT * FROM Users WHERE Username ILIKE $1", name)
       elif email:
-        record = await conn.fetchrow("SELECT * FROM Users WHERE Email LIKE $1", email)
+        record = await conn.fetchrow("SELECT * FROM Users WHERE Email ILIKE $1", email)
       elif id:
         record = await conn.fetchrow("SELECT * FROM Users WHERE Id = $1", id)
-
-      return User.from_record(record)
+      if record:
+        return User.from_record(record)
+      else:
+        return None
 
   async def create_new_user(self,user: User) -> int:
     "Create a new user, and return the ID of the user."
@@ -83,7 +85,7 @@ class PGUtils:
     async with self.pool.acquire() as conn:
       exists = await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM Users WHERE Username ILIKE $1);",user.name)
       if not exists["exists"]:
-        await conn.execute("INSERT INTO Users (Username, Password, Email) VALUES ($1, $2, $3)", user.name, user.password, user.email)
+        await conn.execute("INSERT INTO Users (Username, Password, Email, AvatarType, JoinDate) VALUES ($1, $2, $3, 0, $4);", user.name, user.password, user.email, self._time())
         user = await self.get_user(name=user.name)
         return user.id
       else:

@@ -2,7 +2,7 @@
 
 # Enable live refresh of page.
 # This will re-read the html page from file on every request.
-devmode = true
+devmode = false
 
 [pg]
   # Postgres details
@@ -55,4 +55,7 @@ devmode = true
   password_min = 8
   password_max = 512
   # Hash iteration count. This affects everyone, change with caution!
-  hash_iterations = 500
+  hash_iterations = 500_000
+  # Time between avatar refreshes using the endpoint
+  # In seconds (604800 is 1 week)
+  avatar_refresh_time = 604800

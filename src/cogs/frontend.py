@@ -156,7 +156,8 @@ async def prepare_account_area(request: web.Request) -> str:
   else:
     user = token.owner
     account = {
-      "name": user.name
+      "name": user.name.lower(),
+      "Name": user.name
     }
 
     ctx_dict = {**grand_context, "account":account}
@@ -235,6 +236,94 @@ async def get_index(request: web.Request) -> web.Response:
   }
   rendered = templates["login/signup.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
+
+@routes.get("/user/{tail:\w+$}")
+async def get_user(request: web.Request) -> web.Response:
+  user_name: str = request.path.removeprefix("/user/")
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  user: User = await pg.get_user(name=user_name.lower())
+
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  # Load the index.html template
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+
+  if not user:
+    ctx_dict = {
+      "navbar": navbar,
+      "paste_sidebar": paste_sidebar
+    }
+    rendered = templates["user/not_exists.html"].render(Context(ctx_dict))
+    return web.Response(body=rendered,content_type="text/html")
+
+  token = await pg.handle_auth(request,strict_password=True,no_exist_ok=True)
+  authorized = type(token) is Token
+
+  pastes: list[Paste] = await pg.get_pastes_from_creator(creator=user.id)
+  if not authorized:
+    pastes = list(filter(lambda paste: paste.visibility == 1), pastes)
+  pastes = sorted(pastes, key=lambda paste: -paste.created)
+
+  def suffix(x):
+    if len(str(x)) > 1 and str(x)[-2] == "1":
+      return f"{x}th"
+    elif x % 10 == 1:
+      return f"{x}st"
+    elif x % 10 == 2:
+      return f"{x}nd"
+    elif x % 10 == 3:
+      return f"{x}rd"
+    else:
+      return f"{x}th"
+    
+  def ftime(format, t):
+    return t.strftime(format).replace('{S}', suffix(t.day))
+  
+  visibility_icon = {
+    1: "vaadin:globe",
+    2: "system-uicons:chain",
+    3: "mdi:lock"
+  }
+  visibility_title = {
+    1: "This paste is globally accessible by anyone.",
+    2: "This paste is only accessible to those with the link.",
+    3: "This paste is only accessible by you."
+  }
+
+  template_pastes = [
+    {
+      "title": paste.title,
+      "real_time": ftime("%b {S}, %Y",datetime.datetime.fromtimestamp(paste.created, datetime.timezone.utc)),
+      "relative_time":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
+      "size":humanize.naturalsize(len(paste.data),gnu=True),
+      "id": paste.id,
+      "Syntax": paste.syntax.title(),
+      "visibility_icon": visibility_icon[paste.visibility],
+      "visibility_title": visibility_title[paste.visibility]
+    }
+    for paste in pastes
+  ]
+
+  c_user = {
+    "name": user.name,
+    "join": ftime("%b {S}, %Y",datetime.datetime.fromtimestamp(user.joindate, datetime.timezone.utc)),
+    "relative_join": humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(user.joindate,datetime.timezone.utc))
+  }
+
+  ctx_dict = {
+    "pastes": template_pastes,
+    "user": c_user,
+    "navbar": navbar,
+    "paste_sidebar": paste_sidebar,
+  }
+  rendered = templates["user/exists.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
+
+
 
 @routes.get("/dl/{tail:\w+$}")
 async def get_dl_paste(request: web.Request) -> web.Response:
@@ -383,6 +472,22 @@ async def get_paste(request: web.Request) -> web.Response:
     "authorized": authorized,
     "logged_in": logged_in,
   }
+
+  def suffix(x):
+    if len(str(x)) > 1 and str(x)[-2] == "1":
+      return f"{x}th"
+    elif x % 10 == 1:
+      return f"{x}st"
+    elif x % 10 == 2:
+      return f"{x}nd"
+    elif x % 10 == 3:
+      return f"{x}rd"
+    else:
+      return f"{x}th"
+    
+  def ftime(format, t):
+    return t.strftime(format).replace('{S}', suffix(t.day))
+
   if text_content:
     _ctx_dict["paste"] = {
       **grand_context, 
@@ -390,12 +495,16 @@ async def get_paste(request: web.Request) -> web.Response:
       "title": paste.title,
       "size": humanize.naturalsize(len(paste.data)),
       "relative_time": humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
-      "real_time": datetime.datetime.fromtimestamp(paste.created, datetime.timezone.utc).strftime("%c"),
+      "real_time": ftime("%b {S}, %Y",datetime.datetime.fromtimestamp(paste.created, datetime.timezone.utc)),
       "id": paste.id,
       "Syntax": paste.syntax.title(),
       "syntax": paste.syntax,
       "linerange": range(text_content.count("\n")+1),
       "tags": paste.tags and paste.tags.split(",") or False
+    }
+    p_owner: User = await paste.get_creator(pg)
+    _ctx_dict["user"] = {
+      "name": p_owner.name
     }
     ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main.html"].render(Context(_ctx_dict))

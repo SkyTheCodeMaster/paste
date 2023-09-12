@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <title>Sky Paste</title>
     <link rel="stylesheet" href="/css/vendored/bulma.css">
+    <link rel="stylesheet" href="/css/vendored/fontawesome.css">
     <script src="/scripts/common.js" async></script>
     <script src="/scripts/login.js" async></script>
     <script src="/scripts/highlight.js" async></script>
-    <script src="https://cdn.jsdelivr.net/npm/shiki@0.14.1/dist/index.jsdelivr.iife.min.js" async></script>
-    <script src="https://kit.fontawesome.com/e37f1fa619.js" async crossorigin="anonymous"></script>
+    <script src="/scripts/vendored/shiki.js" async></script>
+    <script src="/scripts/vendored/iconify.min.js" async></script>
     <div 
       username-min-length={{ config.USERNAME_MIN_LENGTH }}
       username-max-length={{ config.USERNAME_MAX_LENGTH }}
@@ -29,17 +30,17 @@
             <div class="control has-icons-left has-icons-right">
               <input class="input" type="text" placeholder="Enter a username" id="login_username_text">
               <span class="icon is-small is-left">
-                <i class="fas fa-user"></i>
+                <iconify-icon icon="mdi:account"></iconify-icon>
               </span>
               <span class="icon is-small is-right">
-                <i class="fas fa-x" style="color:red" id="login_username_check"></i>
+                <iconify-icon icon="ph:x" style="color:red" id="login_username_check"></iconify-icon>
               </span>
             </div>
           </div>
 
           <div class="field" style="display:block;" id="login_username_warn">
             <span class="icon is-small" style="float:left; padding-top: 6px;">
-              <i class="fas fa-x" style="color: red"></i>
+              <iconify-icon icon="ph:x" style="color:red"></iconify-icon>
             </span>
             <p id="login_username_warn_reason">Username is too short, minimum {{ config.USERNAME_MIN_LENGTH }}!</p>
           </div>
@@ -49,7 +50,7 @@
             <div class="control has-icons-left">
               <input class="input" type="password" placeholder="Enter a password" id="login_password_text">
               <span class="icon is-small is-left">
-                <i class="fas fa-lock"></i>
+                <iconify-icon icon="mdi:lock"></iconify-icon>
               </span>
             </div>
           </div>

@@ -52,17 +52,15 @@ function format(_format) {
 
 function set_check(id, state) {
   // True is a green check, false is a red X
-  const X = "fa-x";
-  const CHK = "fa-check";
+  const X = "ph:x";
+  const CHK = "mdi:check";
 
   var sign = document.getElementById(id);
   if (state) {
-    sign.classList.remove(X);
-    sign.classList.add(CHK)
+    sign.setAttribute("icon",CHK);
     sign.style.color = "green";
   } else {
-    sign.classList.remove(CHK);
-    sign.classList.add(X)
+    sign.setAttribute(X);
     sign.style.color = "red";
   }
 }

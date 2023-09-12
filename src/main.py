@@ -6,6 +6,7 @@ import os
 
 import asyncpg
 import coloredlogs
+import aiohttp
 from aiohttp import web
 
 from utils.utils import get_routes
@@ -59,10 +60,13 @@ async def startup():
       password=config["pg"]["password"],
       timeout=config["pg"]["timeout"]
     )
+
+    session = aiohttp.ClientSession()
     
     pg = PGUtils(pool)
     app.pg = pg
     app.pool = pool
+    app.cs = session
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -81,6 +85,11 @@ async def startup():
   finally:
     try: await site.stop() 
     except: pass
+    try: await pool.close()
+    except: pass
+    try: await session.close()
+    except: pass
+
 
 if __name__ == "__main__":
   asyncio.run(startup())
