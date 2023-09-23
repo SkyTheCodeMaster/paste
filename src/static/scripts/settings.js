@@ -23,7 +23,7 @@ function close_modal(modal_id) {
 function get_cookie(name) {
   var nameEQ = name + "=";
   var ca = document.cookie.split(';');
-  for(var i=0;i < ca.length;i++) {
+  for(let i=0;i < ca.length;i++) {
       var c = ca[i];
       while (c.charAt(0)==' ') c = c.substring(1,c.length);
       if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
@@ -233,26 +233,6 @@ async function change_avatar() {
 
 // End settings change functions
 
-// Convert a File (from the avatar upload) into bytestring to send to python
-async function file_to_binary(f) {
-  var ab = await f.arrayBuffer();
-
-  var binary = String.fromCharCode.apply(null, Array.prototype.slice.apply(new Uint8Array(ab)));
-
-  var error;
-  try {
-    return decodeURIComponent(escape(binary));
-  } catch (_error) {
-    error = _error;
-
-    if (error instanceof URIError) {
-      return binary;
-    } else {
-      throw error;
-    }
-  }
-}
-
 // Generic callback for all of the radio buttons
 function modal_avatar_radio_button_callback(ele) {
   // Ele in this case is an HTTPElement thing (onclick="modal...back(this)")
@@ -317,7 +297,6 @@ window.addEventListener("load", function() {
     var new_avatar_file_button = document.getElementById("modal-avatar-change-file-input");
     var new_avatar_text = document.getElementById("modal-avatar-change-file-label");
     new_avatar_file_button.addEventListener("change", function() {
-      console.log(new_avatar_file_button.files)
       var file_name = new_avatar_file_button.files[0].name;
       new_avatar_text.innerText = file_name;
     });
