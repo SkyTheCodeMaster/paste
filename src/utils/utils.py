@@ -8,6 +8,7 @@ import importlib.util
 import io
 import os
 import re
+import urllib.parse
 import tomllib
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -25,7 +26,7 @@ with open("config.toml") as f:
 
 Visibility = Enum("VISIBILITY", ("PUBLIC", "UNLISTED", "PRIVATE"))
 
-SHA256_REGEX = re.compile("^[0-9A-Fa-f]{64}$",re.IGNORECASE)
+SHA512_REGEX = re.compile("^[0-9A-Fa-f]{128}$",re.IGNORECASE)
 
 class aobject(object):
     """Inheriting this class allows you to define an async __init__.
@@ -41,9 +42,9 @@ class aobject(object):
         pass
 
 def hash(passwd: str, username: str) -> str:
-  "Returns a SHA256 hash of the password."
-  salt = hashlib.sha256(username.encode()).digest()
-  output_hash = hashlib.pbkdf2_hmac("sha256", passwd.encode(), salt, HASH_ITERS).hex()
+  "Returns a SHA512 hash of the password."
+  salt = hashlib.sha512(username.encode()).digest()
+  output_hash = hashlib.pbkdf2_hmac("sha512", passwd.encode(), salt, HASH_ITERS).hex()
   return output_hash
 
 async def ahash(passwd: str, username: str) -> Coroutine[Any, Any, str]:
@@ -67,12 +68,13 @@ async def resize_image_bytes(image_data: bytes, size: tuple[int,int] = (80,80)) 
   image = await loop.run_in_executor(None, image.resize, size)
   output_bytes = io.BytesIO()
   await loop.run_in_executor(None, lambda: image.save(output_bytes, format="png"))
+  output_bytes.seek(0)
   return output_bytes.read()
 
 
 def is_hash(s: str) -> bool:
   "Checks if a string is a valid SHA256 hash."
-  return bool(SHA256_REGEX.match(s))
+  return bool(SHA512_REGEX.match(s))
 
 # Helper function for routes
 def get_routes(name:str,*,package=None) -> web.RouteTableDef:
@@ -91,3 +93,16 @@ def set_bit(v: int, index: int, x: bool) -> int:
   if x:
     v |= mask
   return v
+
+def join_url_path(a: str, b: str) -> str:
+  return urllib.parse.urljoin(a, b)
+
+def _bytestring_to_bytes(data: str) -> bytes:
+  "Converts '21,37,223,255' into bytes because javascript files just suck"
+  byte_list: list[int] = [int(byte) for byte in data.split(",")]
+  return bytes(byte_list)
+
+async def bytestring_to_bytes(data: str) -> Coroutine[Any, Any, bytes]:
+  loop = asyncio.get_running_loop()
+  result = await loop.run_in_executor(None, _bytestring_to_bytes, data)
+  return result

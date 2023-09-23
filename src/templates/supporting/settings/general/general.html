@@ -1,0 +1,133 @@
+<!-- these are the various funny modals -->
+
+<div class="modal" id="modal-change-username">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Change Username</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-change-username')"></button>
+    </header>
+    <section class="modal-card-body">
+      <p>Changing your username should take effect immediately.</p>
+      <input class="input" type="text" placeholder="Enter your username here." value="{{ user.Name }}" id="modal-username-textbox">
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="change_username()" id="modal-username-button-submit">Submit</button>
+      <button class="button" onclick="close_modal('modal-change-username')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-change-avatar">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Change Avatar</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-change-avatar')"></button>
+    </header>
+    <section class="modal-card-body">
+      <p>Changing your avatar may take up to a day to reflect on the site</p>
+      <hr>
+      <div class="control">
+        <label class="radio">
+          <input type="radio" name="avatar-select" id="modal-avatar-change-radio-default" onclick="modal_avatar_radio_button_callback(this);">
+          Default Avatar
+        </label>
+        <br>
+        <label class="radio">
+          <input type="radio" name="avatar-select" id="modal-avatar-change-radio-gravatar" onclick="modal_avatar_radio_button_callback(this);">
+          Gravatar
+        </label>
+        <br>
+        <label class="radio">
+          <input type="radio" name="avatar-select" id="modal-avatar-change-radio-url" onclick="modal_avatar_radio_button_callback(this);">
+          URL
+        </label>
+        <input class="input" type="url" placeholder="https://example.com/avatar.png" id="modal-avatar-url-input-box" disabled>
+        <br>
+        <label class="radio">
+          <input type="radio" name="avatar-select" id="modal-avatar-change-radio-upload-file" onclick="modal_avatar_radio_button_callback(this);">
+          Upload File
+        </label>
+        <div class="file" disabled id="modal-avatar-change-file-super">
+          <label class="file-label">
+            <input class="file-input" type="file" name="avatar-file-upload" id="modal-avatar-change-file-input" accept="image/*" disabled>
+            <span class="file-cta" disabled id="modal-avatar-change-file-cta">
+              <span class="file-icon">
+                <iconify-icon icon="mdi:file-upload"></iconify-icon>
+              </span>
+              <span class="file-label" id="modal-avatar-change-file-label">
+                Choose a file...
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="change_avatar()" id="modal-avatar-change-button-submit">Submit</button>
+      <button class="button" onclick="close_modal('modal-change-avatar')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-change-email">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Change Email</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-change-email')"></button>
+    </header>
+    <section class="modal-card-body">
+      <input class="input" type="text" placeholder="Enter old email" id="modal-change-email-old">
+      <input class="input" type="text" placeholder="Enter new email" id="modal-change-email-new">
+      <div class="notification is-danger is-hidden mt-1 p-1" id="modal-change-email-wrong-email">
+        Wrong old email
+      </div>
+      <div class="notification is-danger is-hidden mt-1 p-1" id="modal-change-email-invalid-email">
+        Invalid new email
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="change_email()" id="modal-email-button-submit">Submit</button>
+      <button class="button" onclick="close_modal('modal-change-email')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<!-- this is actually the page or something idk -->
+<h1 class="title is-3">General Settings</h1>
+<div class="level">
+  <div class="level-left">
+    <div class="level-item is-flex-direction-column">
+      <div class="box mb-1 pb-2">
+        <h1 class="title is-5">Username</h1>
+        <div class="level">
+          <div class="level-item mx-0 pr-1">
+            <p>{{ user.Name }}</p>
+          </div>
+          <div class="level-item mx-0">
+            <a class="button is-small is-danger" onclick="sudo_open_modal('modal-change-username')">Change</a>
+          </div>
+        </div>
+      </div>
+      <div class="box">
+        <h1 class="title is-5">Email</h1>
+        <p style="border:solid black 1px;" class="has-background-grey-lighter p-1 m-1" id="user-email-box">{{ user.email_dots }}</p>
+        <a class="button is-small is-success ml-1" onclick="sudo_reveal_email()">Reveal</a>
+        <a class="button is-small is-danger" onclick="sudo_open_modal('modal-change-email')">Change</a>
+      </div>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <div class="box">
+        <h1 class="title is-5" style="text-align: center;">Avatar</h1>
+        <div class="box" style="padding: 3px; width: fit-content; margin: 3px auto;">
+          <img src="/api/internal/user/avatar/">
+        </div>
+        <a class="button is-success" onclick="sudo_open_modal('modal-change-avatar')">Change Avatar</a>
+      </div>
+    </div>
+  </div>
+</div>

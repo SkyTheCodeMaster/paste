@@ -1,5 +1,6 @@
 function logout() {
   document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "securetoken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   window.location.replace("/");
 }
 
@@ -20,7 +21,7 @@ function append_alert(reason) {
   localStorage.setItem("popup_alert",JSON.stringify(data));
 }
 
-function create_popup(reason) {
+function create_popup(reason, is_danger) {
   // Create the div
   const div = document.createElement("div");
 
@@ -36,7 +37,11 @@ function create_popup(reason) {
 
   const notification = document.createElement("div")
   notification.classList.add("notification");
-  notification.classList.add("is-primary");
+  if (!is_danger) {
+    notification.classList.add("is-primary");
+  } else {
+    notification.classList.add("is-danger");
+  }
   // Add a header to the div
   const text_node = document.createTextNode(reason);
   // Add the close button

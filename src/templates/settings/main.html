@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Sky Paste</title>
+    <link rel="stylesheet" href="/css/vendored/bulma.css">
+    <link rel="stylesheet" href="/css/vendored/bulma-switch.min.css">
+    <link rel="stylesheet" href="/css/vendored/bulma-tagsinput.min.css">
+    <link rel="stylesheet" href="/css/paste.css">
+    <link rel="stylesheet" href="/css/fix-disabled-file.css">
+    <script src="/scripts/common.js" async></script>
+    <script src="/scripts/highlight.js" async></script>
+    <script src="/scripts/pastecreate.js" async></script>
+    <script src="/scripts/settings.js" async></script>
+    <script src="/scripts/vendored/bulma-tagsinput.min.js" async></script>
+    <script src="/scripts/vendored/iconify.min.js" async></script>
+    <script src="/scripts/vendored/shiki.js" async></script>
+    <div 
+      username-min-length={{ config.USERNAME_MIN_LENGTH }}
+      username-max-length={{ config.USERNAME_MAX_LENGTH }}
+      password-min-length={{ config.PASSWORD_MIN_LENGTH }}
+      password-max-length={{ config.PASSWORD_MAX_LENGTH }}
+      id="username_data">
+    </div>
+  </head>
+  <body>
+    {{ navbar | safe }}
+    <div class="columns" style="margin:5px;">
+      <div class="column is-2">
+        {{ settings_menu | safe }}
+      </div>
+      <div class="column is-7">
+        <div class="box">
+          {{ settings_content | safe }}
+        </div>
+      </div>
+      <div class="column is-3">
+        {{ paste_sidebar | safe }}
+      </div>
+    </div>
+    {{ footer | safe }}
+    <div class="modal" id="modal-sudo-mode">
+      <div class="modal-background"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Sudo Mode</p>
+          <button class="delete" aria-label="close" onclick="close_modal('modal-sudo-mode')"></button>
+        </header>
+        <section class="modal-card-body">
+          <p>Now entering sudo mode, you will not have to enter your password for another 15 minutes.</p>
+          <input class="input" type="password" id="sudo-modal-password-input" placeholder="Enter your password here.">
+          <div class="notification is-danger is-hidden mt-1 p-1" id="modal-sudo-invalid-password">
+            Invalid password
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-success" onclick="sudo_secure_login()" id="modal-sudo-submit">Enter</button>
+          <button class="button" onclick="close_modal('modal-sudo-mode')">Cancel</button>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>

@@ -28,6 +28,7 @@ devmode = false
 
 [paste]
   # Paste ID length
+  # There are 62^length tokens
   id_length = 8
   # How many pastes to show in the sidebar
   show_number = 8
@@ -42,10 +43,13 @@ devmode = false
 
 [token]
   # Token ID length
+  # There are 62^length tokens
+  # You can change this and old paste ids will still work
   id_length = 64
 
 [user]
   # User token length (for sessions)
+  # There are 62^length tokens
   token_length = 128
   # Username  minimum and maximum
   name_min = 3

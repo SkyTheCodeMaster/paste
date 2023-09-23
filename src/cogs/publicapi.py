@@ -70,7 +70,6 @@ async def api_paste_raw_get(request: web.Request) -> web.Response:
 
 @routes.get("/api/paste/search/")
 async def api_paste_search(request: web.Request) -> web.Response:
-  print("got here 1')")
   query = request.query
   
   app: web.Application = request.app
@@ -125,7 +124,6 @@ async def api_paste_search(request: web.Request) -> web.Response:
     return False
 
   pastes = await pg.get_pastes_from_function(search)
-  print(pastes)
   # Convert list to json document
   j = []
   for paste in pastes:
@@ -147,7 +145,6 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return token
   
   data: dict = await request.json()
-  print(data)
   if (not data.get("title")) or (not data.get("content")) or (type(data.get("visibility",None)) is not int):
     return web.Response(status=400,text="missing body element")
 
@@ -179,7 +176,6 @@ async def api_paste_create(request: web.Request) -> web.Response:
 async def api_paste_edit(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
-  headers = request.headers
 
   token = await pg.handle_auth(request)
   if type(token) is web.Response:
@@ -190,7 +186,6 @@ async def api_paste_edit(request: web.Request) -> web.Response:
     return web.Response(status=400,body="missing paste id")
 
   paste = await pg.get_pastes_from_search(id=data.get("id"))
-  print(paste)
   if not paste:
     return web.Response(status=404,body="paste not found")
   paste: Paste = paste[0]

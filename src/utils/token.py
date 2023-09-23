@@ -13,11 +13,19 @@ class TokenPermissions:
   view_private = False
 
 class Token:
+  name: str
+  owner: User
+  perms: TokenPermissions
+  id: str
+  user_token: bool
+  secure: bool
   def __init__(self,*,name: str, owner: User, permissions: int, id: str) -> None:
     self.name = name
     self.owner = owner
     self.perms = permissions
     self.id = id
+    self.user_token = name in ["INSECUREPASSWORD","SECUREPASSWORD"]
+    self.secure = name == "SECUREPASSWORD"
 
   @property
   def permissions(self) -> TokenPermissions:

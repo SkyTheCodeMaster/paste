@@ -1,14 +1,17 @@
 import datetime
 import re
+import tomllib
 from typing import TYPE_CHECKING
 
+import puremagic
 from aiohttp import web
 
 from utils.pg import PGUtils
 from utils.ratelimit import limiter
 from utils.token import Token
 from utils.user import User
-from utils.utils import ahash, gravatar, is_hash, resize_image_bytes
+from utils.utils import (ahash, gravatar, is_hash, join_url_path,
+                         resize_image_bytes, bytestring_to_bytes)
 
 if TYPE_CHECKING:
   import aiohttp
@@ -20,7 +23,14 @@ DEFAULT_AVATAR_BYTES: bytes
 with open("static/images/default_avatar.png","rb") as f:
   DEFAULT_AVATAR_BYTES = f.read()
 
-email_regex = re.compile(r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
+with open("config.toml") as f:
+  contents = f.read()
+  config = tomllib.loads(contents)
+  PUBLIC_URL = config["srv"]["publicurl"]
+  USERNAME_MIN_LENGTH = config["user"]["name_min"]
+  USERNAME_MAX_LENGTH = config["user"]["name_max"]
+
+EMAIL_REGEX = re.compile(r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
 
 @routes.post("/api/login/")
 async def api_login(request: web.Request) -> web.Response:
@@ -30,6 +40,7 @@ async def api_login(request: web.Request) -> web.Response:
   `name` - username
   `password` - password, if doesnt match sha256 then it will be hashed
   `remember-me` - if true, expiry on the token will be set to 30 days
+  `secure` - if true, this token grants access to changing account settings, and only lasts 15 minutes.
 
   returns 200 OK and token cookie, or 401.
   """
@@ -37,8 +48,10 @@ async def api_login(request: web.Request) -> web.Response:
   pg: PGUtils = app.pg
 
   data: dict[str,str] = await request.json()
-  if "name" not in data or "password" not in data:
-    return web.Response(status=400)
+  if "name" not in data:
+    return web.Response(status=400,body="name missing")
+  if "password" not in data:
+    return web.Response(status=400,body="password missing")
   name = data["name"]
   passwd = data["password"]
   remember_me = data.get("rememberme",False)
@@ -48,12 +61,22 @@ async def api_login(request: web.Request) -> web.Response:
   if not user_token:
     return web.Response(status=401)
   async with app.pool.acquire() as conn:
-    record = await conn.fetchrow("SELECT Token FROM Users WHERE Id=$1;",user_token.owner.id)
-    token = record["token"]
-    response = web.Response(status=200)
-    max_age = 2592000 if remember_me else -1
-    response.set_cookie("token",token,max_age=max_age,samesite="Lax")
-    return response
+    # Set user remember_me
+    await conn.execute("UPDATE Users SET RememberMe=$2 WHERE Id=$1;",user_token.owner.id,remember_me)
+    if data.get("secure",False):
+      record = await conn.fetchrow("SELECT SecureToken FROM Users WHERE Id=$1;",user_token.owner.id)
+      token = record["securetoken"]
+      response = web.Response(status=200)
+      max_age = 900
+      response.set_cookie("securetoken",token,max_age=max_age,samesite="Lax")
+      return response
+    else:
+      record = await conn.fetchrow("SELECT InsecureToken FROM Users WHERE Id=$1;",user_token.owner.id)
+      token = record["insecuretoken"]
+      response = web.Response(status=200)
+      max_age = 2592000 if remember_me else -1
+      response.set_cookie("token",token,max_age=max_age,samesite="Lax")
+      return response
 
 @routes.post("/api/internal/user/create/")
 async def api_internal_user_create(request: web.Request) -> web.Response:
@@ -78,12 +101,18 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
   email = data["email"]
   passwd = data["password"]
   remember_me = data.get("rememberme",False)
-  if not email_regex.match(email):
+  if not EMAIL_REGEX.match(email):
     return web.Response(status=400,body="email invalid")
+  if not name.isalnum():
+    return web.Response(status=400,body="username not alphanumeric")
+  if len(name) < USERNAME_MIN_LENGTH:
+    return web.Response(status=400,body="username too short, min "+USERNAME_MIN_LENGTH)
+  if len(name) > USERNAME_MAX_LENGTH:
+    return web.Response(status=400,body="username too long, max "+USERNAME_MAX_LENGTH)
 
   if not is_hash(passwd):
     passwd = await ahash(passwd,name)
-  user = User(name=name,password=passwd,email=email)
+  user = User(name=name,password=passwd,email=email,remember_me=remember_me)
   new_id = await pg.create_new_user(user)
   user.id = new_id
   if type(new_id) is int:
@@ -119,6 +148,8 @@ async def api_internal_user_avatar(request: web.Request) -> web.Response:
   token = await pg.handle_auth(request)
   if "user" in request.query:
     target_user = await pg.get_user(name=request.query["user"])
+    if not target_user:
+      return web.Response(status=400,body="user does not exist")
   elif type(token) is Token:
     target_user = token.owner
   else:
@@ -128,6 +159,7 @@ async def api_internal_user_avatar(request: web.Request) -> web.Response:
   
   async with app.pool.acquire() as conn:
     exists = (await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM AvatarCache WHERE UserID=$1 );",target_user.id))["exists"]
+    exists = False # disable image cache for testing
     if exists:
       record = await conn.fetchrow("SELECT * FROM AvatarCache WHERE UserID=$1;",target_user.id)
       if record["refresh"] > time():
@@ -154,6 +186,9 @@ async def api_internal_user_avatar(request: web.Request) -> web.Response:
         else:
           async with session.get(url) as resp:
             image_bytes = await resp.read()
+
+    # Resize image_bytes to 80x80
+    image_bytes = await resize_image_bytes(image_bytes, (80,80))
   
     await conn.execute("""
       INSERT INTO AvatarCache
@@ -174,7 +209,7 @@ async def api_internal_user_setavatar(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  token = await pg.handle_auth(request, strict_password=True)
+  token = await pg.handle_auth(request, strict_password=True, secure=True)
   if type(token) is web.Response:
     return token
   
@@ -182,11 +217,28 @@ async def api_internal_user_setavatar(request: web.Request) -> web.Response:
   if not "type" in data:
     return web.Response(body="missing type in post data",status=400)
   
-  if data["type"] == 2 and (not "url" in data or not "bytes" in data):
+  if data["type"] == 2 and (not "url" in data and not "bytes" in data):
     return web.Response(body="missing url/bytes in post data",status=400)
   
-  if data["type"] == 2 and (not "url" in data and not "bytes" in data):
+  if data["type"] == 2 and ("url" in data and "bytes" in data):
     return web.Response(body="url/bytes both in post data",status=400)
+  
+  if data["type"] == 2 and "url" in data:
+    # First we verify the content-type header
+    async with app.cs.head(data["url"]) as resp:
+      if not "Content-Type" in resp.headers:
+        return web.Response(body="Content-Type of URL is not present",status=400)
+      elif not resp.headers["Content-Type"].startswith("image/"):
+        return web.Response(body="Content-Type of URL is not image/*",status=400)
+    # Having verified it's an image, download the bytes and check if it's actually an image.
+    async with app.cs.get(data["url"]) as resp:
+      chk_data: bytes = await resp.read()
+      detections = puremagic.magic_string(chk_data)
+      if not detections:
+        return web.Response(body="No file type detected from URL",status=400)
+      detection = detections[0]
+      if not detection.mime_type.startswith("image/"):
+        return web.Response(body=f"URL does not contain image. Expected: image/* Got: {detection.mime_type}",status=400)
 
   async with app.pool.acquire() as conn:
     if data["type"] in [0,1]:
@@ -195,7 +247,14 @@ async def api_internal_user_setavatar(request: web.Request) -> web.Response:
       if "url" in data:
         await conn.execute("UPDATE Users SET AvatarType = 2, AvatarURL = $2 WHERE ID = $1;", token.owner.id, data["url"])
       elif "bytes" in data:
-        resized_bytes = await resize_image_bytes(data["bytes"], (80,80))
+
+        if type(data["bytes"]) is str: 
+          # Assume this is javascript's god awful 142,135,123,652 type stuff
+          img_bytes = await bytestring_to_bytes(data["bytes"])
+        else:
+          img_bytes = data["bytes"]
+
+        resized_bytes = await resize_image_bytes(img_bytes, (80,80))
         await conn.execute("UPDATE Users SET AvatarType = 2, AvatarURL = 'INTERNAL_AVATAR' WHERE ID = $1;", token.owner.id)
         await conn.execute("""
           INSERT INTO Avatars
@@ -216,8 +275,64 @@ async def api_internal_user_setavatar(request: web.Request) -> web.Response:
       DO
         UPDATE SET 
           Refresh = 0;
-    """)
+    """, token.owner.id)
     return web.Response(status=200)
+  
+@routes.post("/api/internal/user/refreshtoken/")
+async def api_internal_user_refreshtoken(request: web.Request) -> web.Response:
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  token = await pg.handle_auth(request, strict_password=True)
+  if type(token) is web.Response:
+    return token
+  
+  insecure_token = await pg.generate_new_user_token(token.owner)
+  await pg.generate_new_user_token(token.owner,True)
+  response = web.Response(status=200)
+  max_age = 2592000 if token.owner.remember_me else -1
+  response.set_cookie("token", insecure_token, max_age=max_age, samesite="Lax")
+  response.del_cookie("securetoken")
+  return response
+  
+@routes.get("/api/internal/user/get/")
+async def api_internal_user_get(request: web.Request) -> web.Response:
+  """
+  Get a user.
+
+  Must be authorized with a user key.
+
+  Pass requested user in param, default is the account of the requester.
+  """
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  token = await pg.handle_auth(request, strict_password=True)
+  if type(token) is web.Response:
+    return token
+  
+  target_user = None
+
+  if "user" in request.query:
+    target_user = await pg.get_user(name=request.query["user"])
+  else:
+    target_user = token.owner
+
+  pastes_count = await pg.get_user_pastes_count(target_user, token.owner == target_user)
+
+  data = {
+    "username": target_user.name,
+    "avatar": join_url_path(PUBLIC_URL, f"/api/internal/user/avatar/?user={target_user.name}"),
+    "total_pastes": pastes_count,
+    "join": target_user.joindate
+  }
+
+  if token.owner == target_user and token.secure:
+    data["email"] = target_user.email
+    data["token"] = target_user.insecure_token
+
+  return web.json_response(data, status=200)
+  
 
 @routes.post("/api/internal/user/edit/")
 async def api_internal_user_edit(request: web.Request) -> web.Response:
@@ -225,7 +340,7 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   Edit a user.
   Post data (all optional):
   `name` - New name of the user
-  `newpassword` - New password of the user, must be pre hashed. If not hashed, 400 is returned
+  `password` - New password of the user, must be pre hashed. If not hashed, 400 is returned
   `email` - New email of user, must be valid or 400 will be returned.
   
   Required header is the Authorization header of the user's hashed password.
@@ -237,25 +352,42 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  token = await pg.handle_auth(request, strict_password=True)
+  token = await pg.handle_auth(request, strict_password=True, secure=True)
   if type(token) is web.Response:
     return token
 
   data = await request.json()
   old_user = token.owner.clone()
+  new_name: str   = data.get("name",old_user.name)
+  new_email: str  = data.get("email",old_user.email)
+  new_passwd: str = data.get("password",old_user.password)
+  if not EMAIL_REGEX.match(new_email):
+    return web.Response(status=400,body="email invalid")
+  if len(new_name) < USERNAME_MIN_LENGTH:
+    return web.Response(status=400,body="username too short, min "+USERNAME_MIN_LENGTH)
+  if len(new_name) > USERNAME_MAX_LENGTH:
+    return web.Response(status=400,body="username too long, max "+USERNAME_MAX_LENGTH)
+  if not new_name.isalnum():
+    return web.Response(status=400,body="invalid characters in username")
+  hashed_passwd = await ahash(new_passwd, new_name)
+
   new_user = User(
-    name="name" in data and data["name"] or old_user.name,
-    email="email" in data and data["email"] or old_user.email,
-    password="newpassword" in data and data["newpassword"] or old_user.password,
+    name=new_name,
+    email=new_email,
+    password=hashed_passwd,
     id=old_user.id,
-    token=old_user.token
+    insecure_token=old_user.insecure_token,
   )
 
-  await pg.update_user(new_user)
+  success = await pg.update_user(new_user)
 
   new_token = await pg.generate_new_user_token(new_user)
-  response = web.Response(status=200)
-  response.set_cookie("token",new_token)
+  response = web.Response(status=200 if success else 500) # our fault bro lol
+  if new_passwd != old_user.password:
+    # invalidate the old securetoken, as it was regenerated inside of pg.update_user
+    response.del_cookie("securetoken")
+  max_age = 2592000 if old_user.remember_me else -1
+  response.set_cookie("token",new_token,max_age=max_age,samesite="Lax")
   return response
 
 @routes.get("/api/internal/user/data/")
@@ -269,7 +401,7 @@ async def api_internal_user_data(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  token = await pg.handle_auth(request,strict_password=True)
+  token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(token) is web.Response:
     return token
 
@@ -290,7 +422,7 @@ async def api_internal_user_delete(request: web.Request) -> web.Response:
   pg: PGUtils = app.pg
   headers = request.headers
 
-  token = await pg.handle_auth(request,strict_password=True)
+  token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(token) is web.Response:
     return token
 
@@ -315,7 +447,7 @@ async def api_internal_token_create(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  user_token = await pg.handle_auth(request,strict_password=True)
+  user_token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(user_token) is web.Response:
     return user_token
 
@@ -347,7 +479,7 @@ async def api_internal_token_edit(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  user_token = await pg.handle_auth(request,strict_password=True)
+  user_token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(user_token) is web.Response:
     return user_token
 
@@ -376,7 +508,7 @@ async def api_internal_token_delete(request: web.Request) -> web.Response:
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
-  user_token = await pg.handle_auth(request,strict_password=True)
+  user_token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(user_token) is web.Response:
     return user_token
 

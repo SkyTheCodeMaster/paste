@@ -18,7 +18,7 @@ import asyncpg
 from utils.paste import Paste
 from utils.token import Token
 from utils.user import User
-from utils.utils import hash
+from utils.utils import ahash
 from aiohttp import web
 
 if TYPE_CHECKING:
@@ -42,19 +42,33 @@ class PGUtils:
   def _time(self) -> int:
     return int(datetime.datetime.now(datetime.timezone.utc).timestamp())
 
-  async def handle_auth(self, request: web.Request, *, strict_password: bool = False, no_exist_ok: bool = False) -> Union[web.Response,Token,False]:
+  async def handle_auth(self, request: web.Request, *, strict_password: bool = False, no_exist_ok: bool = False, secure: bool = False) -> Union[web.Response,Token,False]:
     if "Authorization" in request.headers:
       token = await self.verify_token(request.headers["Authorization"])
-      if strict_password and type(token) is Token and token.name == "PASSWORD":
-        return token
+      if strict_password and type(token) is Token and token.name in ["INSECUREPASSWORD","SECUREPASSWORD"]:
+        if secure and token.name == "SECUREPASSWORD":
+          return token
+        elif secure: 
+          return web.Response(status=401)
+        else:
+          return token
       elif strict_password:
         return web.Response(status=401)
       else:
         return token
+    if "securetoken" in request.cookies:
+      token = await self.verify_token(request.cookies["securetoken"])
+      if strict_password and type(token) is Token and token.secure:
+        return token
     if "token" in request.cookies:
       token = await self.verify_token(request.cookies["token"])
-      if strict_password and type(token) is Token and token.name == "PASSWORD":
-        return token
+      if strict_password and type(token) is Token and token.name in ["INSECUREPASSWORD","SECUREPASSWORD"]:
+        if secure and token.name == "SECUREPASSWORD":
+          return token
+        elif secure: 
+          return web.Response(status=401)
+        else:
+          return token
       elif strict_password:
         return web.Response(status=401)
       else:
@@ -85,7 +99,7 @@ class PGUtils:
     async with self.pool.acquire() as conn:
       exists = await conn.fetchrow("SELECT EXISTS ( SELECT 1 FROM Users WHERE Username ILIKE $1);",user.name)
       if not exists["exists"]:
-        await conn.execute("INSERT INTO Users (Username, Password, Email, AvatarType, JoinDate) VALUES ($1, $2, $3, 0, $4);", user.name, user.password, user.email, self._time())
+        await conn.execute("INSERT INTO Users (Username, Password, Email, AvatarType, JoinDate, RememberMe) VALUES ($1, $2, $3, 0, $4, $5);", user.name, user.password, user.email, self._time(), user.remember_me)
         user = await self.get_user(name=user.name)
         return user.id
       else:
@@ -94,8 +108,11 @@ class PGUtils:
   async def update_user(self,user: User) -> bool:
     "Update attributes of a user."
     async with self.pool.acquire() as conn:
-      record = await conn.execute("UPDATE Users SET name=$2, email = $3, password=$4 WHERE id=$1",user.id,user.name,user.email,user.password)
-      return bool(record["update"])
+      original_user = await self.get_user(id = user.id)
+      if original_user.password != user.password:
+        await self.generate_new_user_token(original_user, True)
+      record = await conn.execute("UPDATE Users SET username=$2, email = $3, password=$4 WHERE id=$1",user.id,user.name,user.email,user.password)
+      return record == "UPDATE 1" # If we've updated more than one, yikes bro
 
   async def get_pastes_from_creator(self,*,creator: int) -> list[Paste]:
     "Get all of the pastes registered to a user"
@@ -133,18 +150,15 @@ class PGUtils:
     async with self.pool.acquire() as conn:
       records = await conn.fetch("SELECT * FROM Pastes LIMIT $1 OFFSET $2",limit,offset*limit)
       # Now turn it into a list of pastes
-      print(records)
       pastes = [Paste.from_record(record) for record in records]
 
       # Now loop over it and check it against the lambda
       out = []
       for paste in pastes:
         if isawaitable(lambd):
-          print(await lambd())
           if await lambd(paste):
             out.append(paste)
         else:
-          print(lambd())
           if lambd(paste):
             out.append(paste)
       return out
@@ -164,16 +178,27 @@ class PGUtils:
           id=record["id"],
         )
         return token
-      record = await conn.fetchrow("SELECT * FROM Users WHERE Password = $1 OR Token = $1;",token)
+      record = await conn.fetchrow("SELECT * FROM Users WHERE Password = $1 OR SecureToken = $1 OR InsecureToken = $1;",token)
       if record:
-        user = User.from_record(record)
-        token = Token(
-          name="PASSWORD",
-          owner=user,
-          permissions=255,
-          id=token
-        )
-        return token
+        if record["password"] == token or record["securetoken"] == token:
+          user = User.from_record(record)
+          token = Token(
+            name="SECUREPASSWORD",
+            owner=user,
+            permissions=255,
+            id=token
+          )
+          return token
+        if record["insecuretoken"] == token:
+          user = User.from_record(record)
+          token = Token(
+            name="INSECUREPASSWORD",
+            owner=user,
+            permissions=255,
+            id=token
+          )
+          return token
+    return False
 
   async def _generate_paste_id(self) -> str:
     "Generate an ID, while making sure it does not exist in the database already."
@@ -197,12 +222,15 @@ class PGUtils:
       else:
         return tokenID
 
-  async def _generate_user_token_id(self) -> str:
+  async def _generate_user_token_id(self, secure: bool) -> str:
     "Generate an ID, while making sure it does not exist in the database already."
     pool: str = string.ascii_letters+string.digits
     tokenID = "".join(random.choices(pool,k=TOKEN_ID_LENGTH))
     async with self.pool.acquire() as conn:
-      record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE Token = $1);",tokenID)
+      if secure:
+        record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE SecureToken = $1);",tokenID)
+      else:
+        record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE InsecureToken = $1);",tokenID)
       if record["exists"]:
         return await self._generate_user_token_id()
       else:
@@ -352,10 +380,23 @@ class PGUtils:
       except:
         return False
 
-  async def generate_new_user_token(self, user: Union[int,User]) -> str:
+  async def generate_new_user_token(self, user: Union[int,User], regen_secure: bool = False) -> str:
     if type(user) is User:
       user = user.id
     async with self.pool.acquire() as conn:
-      new_token: str = await self._generate_user_token_id()
-      await conn.execute("UPDATE Users SET Token = $2 WHERE Id = $1",user,new_token)
+      new_token: str = await self._generate_user_token_id(False)
+      await conn.execute("UPDATE Users SET InsecureToken = $2 WHERE Id = $1",user,new_token)
+      if regen_secure:
+        new_secure_token: str = await self._generate_user_token_id(True)
+        await conn.execute("UPDATE Users SET SecureToken = $2 WHERE Id = $1",user,new_secure_token)
       return new_token
+    
+  async def get_user_pastes_count(self, user: Union[int,User], all_pastes: bool) -> int:
+    if type(user) is User:
+      user = user.id
+    async with self.pool.acquire() as conn:
+      if all_pastes:
+        count = (await conn.fetchrow("SELECT COUNT(*) FROM Pastes WHERE Creator=$1;", user))["count"]
+      else:
+        count = (await conn.fetchrow("SELECT COUNT(*) FROM Pastes WHERE Creator=$1 AND Visibility=1;", user))["count"]
+      return count

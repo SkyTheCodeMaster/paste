@@ -8,3 +8,4 @@ git+https://github.com/SkyTheCodeMaster/aiohttp-ratelimiter
 humanize==4.6.0
 typing_extensions==4.4.0
 pillow==10.0.0
+puremagic==1.15

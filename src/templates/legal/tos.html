@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Terms of Service</title>
+    <link rel="stylesheet" href="/css/vendored/bulma.css">
+    <script src="/scripts/common.js" async></script>
+    <script src="/scripts/highlight.js" async></script>
+    <script src="/scripts/vendored/shiki.js" async></script>
+  </head>
+  <body>
+    {{ navbar | safe }}
+    <div class="columns">
+      <div class="column is-9">
+        <div class="box">
+          <h1 class="title is-2">Terms of Service</h1>
+          <div class="section">
+            <p>SkyPaste is a service to upload and/or share textual contents, including programming languages scripts.</p>
+            <p>We reserve the right to take down any content, terminate registered accounts, take action against users and deny access to the service at any moment, without notice.</p>
+          </div>
+          <div class="section">
+            <h1 class="title is-3">Responsibility</h1>
+            <p>Any content uploaded to the SkyPaste service remain the property of their original owner.</p>
+            <p>The uploaded content will reside on the SkyPaste server until deletion from the user or by any legal request.</p>
+            <p>The uploader assumes all responsibility of the uploaded content.</p>
+          </div>
+          <div class="section">
+            <h1 class="title is-3">Copyright</h1>
+            <p>The owner of any content falling under the legal copyright may submit proof of their ownership in order to request a takedown of their property to <code>paste.support at skystuff dot cc</code>.</p>
+          </div>
+          <div class="section">
+            <h1 class="title is-3">Abuse</h1>
+            <p>Any attempt to exploit, damage or otherwise harm SkyPaste in any way may result in an immediate termination and/or deny of access to the service, without notice.</p>
+            <p>If you encouter any bugs or exploits, please make sure you report them as soon as possible via the issue tracker here: <a href="https://github.com/skythecodemaster/paste/issues">https://github.com/SkyTheCodeMaster/paste</a></p>
+
+            <p>By using the SkyPaste service you agree to not:</p>
+            <div class="content">
+              <ul>
+                  <li>Use this service to upload illegal or malevolent content.</li>
+                  <li>Use this service to upload pirated content.</li>
+                  <li>Abuse any exploit, bugs.</li>
+                  <li>Abuse the storage offered.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="column is-3">
+        {{ paste_sidebar | safe }}
+      </div>
+    </div>
+    {{ footer | safe }}
+  </body>
+</html>

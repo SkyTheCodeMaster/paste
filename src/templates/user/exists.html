@@ -34,26 +34,30 @@
           </div>
         </div>
         <div class="box">
-          {% for paste in pastes %}
-            <div class="box">
-              <div class="level">
-                <div class="level-left">
-                  <div class="level-item">
-                    <iconify-icon icon="{{ paste.visibility_icon }}" title="{{ paste.visibility_title }}"></iconify-icon>
-                    <a href="/{{ paste.id }}" style="padding-left:5px;">{{ paste.title }}</a>
+          {% if pastes %}
+            {% for paste in pastes %}
+              <div class="box">
+                <div class="level">
+                  <div class="level-left">
+                    <div class="level-item">
+                      <iconify-icon icon="{{ paste.visibility_icon }}" title="{{ paste.visibility_title }}"></iconify-icon>
+                      <a href="/{{ paste.id }}" style="padding-left:5px;">{{ paste.title }}</a>
+                    </div>
                   </div>
-                </div>
-                <div class="level-right">
-                  <div class="level-item">
-                    <div class="tags">
-                      <span class="tag" title="{{ paste.relative_time }}">{{ paste.real_time }}</span>
-                      <span class="tag">{{ paste.Syntax }}</span>
+                  <div class="level-right">
+                    <div class="level-item">
+                      <div class="tags">
+                        <span class="tag" title="{{ paste.relative_time }}">{{ paste.real_time }}</span>
+                        <span class="tag">{{ paste.Syntax }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          {% endfor %}
+            {% endfor %}
+          {% else %}
+            <h1 class="title is-3">This user has no pastes.</h1>
+          {% endif %}
         </div>
       </div>
       <div class="column is-1"></div>
@@ -61,5 +65,6 @@
         {{ paste_sidebar | safe }}
       </div>
     </div>
+    {{ footer | safe }}
   </body>
 </html>

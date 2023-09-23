@@ -13,8 +13,11 @@ function login() {
   // Grab the values
   var username = document.getElementById("login_username_text").value;
   var password = document.getElementById("login_password_text").value;
-  var remember = document.getElementById("login_remember_me").value;
+  var remember = document.getElementById("login_remember_me").checked;
   
+  var login_button = document.getElementById("login_button");
+  login_button.setAttribute("disabled",true);
+  login_button.classList.add("is-loading");
   // Instantiate a request
   var request = new XMLHttpRequest();
   // Set headers and URL
@@ -31,6 +34,10 @@ function login() {
   request.onload = function() {
     if (request.status == 200) {
       window.location.replace("/");
+    } else {
+      login_button.removeAttribute("disabled");
+      login_button.classList.remove("is-loading");
+      create_popup("HTTP" + request.status + ": " + request.responseText);
     }
   };
 }

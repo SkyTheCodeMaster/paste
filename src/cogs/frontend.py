@@ -120,7 +120,8 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> str:
         "date":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
         "size":humanize.naturalsize(len(paste.data),gnu=True),
         "content": process_paste_content(paste.text_content),
-        "syntax": paste.syntax
+        "syntax": paste.syntax,
+        "author": (await paste.get_creator(app.pg)).name
       }))
       for paste 
       in latest_pastes_cache
@@ -132,12 +133,13 @@ async def prepare_sidebar(request: web.Request, count: int = 8) -> str:
       pastes: list[Paste] = [Paste.from_record(record) for record in records]
       self_pastes: list[str] = [
         sup_templates["paste/public.html"].render(Context({
-          "name":paste.title,
+          "name":paste.title if len(paste.title) < PUBLIC_PASTE_NAME_LENGTH  else f"{paste.title[:PUBLIC_PASTE_NAME_LENGTH ]}…",
           "id": paste.id,
           "date":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
           "size":humanize.naturalsize(len(paste.data),gnu=True),
           "content": process_paste_content(paste.text_content),
-          "syntax": paste.syntax
+          "syntax": paste.syntax,
+          "author": (await paste.get_creator(app.pg)).name
         }))
         for paste 
         in pastes
@@ -188,6 +190,7 @@ async def get_index(request: web.Request) -> web.Response:
   ctx_dict: dict[str,Any] = {
     **grand_context, 
     "navbar":navbar,
+    "footer": sup_templates["footer.html"].source,
     "paste_sidebar": paste_sidebar,
     "authorized": authorized,
     "create_paste": sup_templates["paste/create.html"].source
@@ -206,6 +209,7 @@ async def get_index(request: web.Request) -> web.Response:
   ctx_dict: dict[str,Any] = {
     **grand_context, 
     "navbar":navbar,
+    "footer": sup_templates["footer.html"].source,
     "paste_sidebar": paste_sidebar,
     "config": {
       "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
@@ -226,6 +230,7 @@ async def get_index(request: web.Request) -> web.Response:
   ctx_dict: dict[str,Any] = {
     **grand_context, 
     "navbar":navbar,
+    "footer": sup_templates["footer.html"].source,
     "paste_sidebar": paste_sidebar,
     "config": {
       "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
@@ -255,6 +260,7 @@ async def get_user(request: web.Request) -> web.Response:
   if not user:
     ctx_dict = {
       "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
       "paste_sidebar": paste_sidebar
     }
     rendered = templates["user/not_exists.html"].render(Context(ctx_dict))
@@ -318,12 +324,68 @@ async def get_user(request: web.Request) -> web.Response:
     "pastes": template_pastes,
     "user": c_user,
     "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
     "paste_sidebar": paste_sidebar,
   }
   rendered = templates["user/exists.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
+@routes.get("/settings/")
+async def get_settings(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  raise web.HTTPFound("/settings/general")
 
+@routes.get("/settings/{tail:\w+$}")
+async def get_settings_subpage(request: web.Request) -> web.Response:
+  subpage: str = request.path.removeprefix("/settings/")
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  # Load the index.html template
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+
+  pages = {
+    "general": "settings/general/general.html",
+    "security": "settings/general/security.html",
+    "apitokens": "settings/developer/apitokens.html"
+  }
+
+  page_template = sup_templates[pages[subpage]]
+
+  token = await pg.handle_auth(request,strict_password=True,no_exist_ok=False)
+  if type(token) is not Token:
+    return token
+  
+  user = token.owner
+  _ctx_dict = {
+    "user": {
+      "Name": user.name,
+      "name": user.name.lower(),
+      "email_dots": "•"*len(user.email)
+    }
+  }
+
+  settings_content = page_template.render(Context(_ctx_dict))
+
+  ctx_dict = {
+    "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
+    "paste_sidebar": paste_sidebar,
+    "settings_menu": sup_templates["settings/menu.html"].render(Context({"subpage":subpage})),
+    "settings_content": settings_content,
+    "config": {
+      "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
+      "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH,
+    }
+  }
+  rendered = templates["settings/main.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
 
 @routes.get("/dl/{tail:\w+$}")
 async def get_dl_paste(request: web.Request) -> web.Response:
@@ -428,12 +490,47 @@ async def get_paste(request: web.Request) -> web.Response:
       **grand_context, 
       "title": "The paste you are looking for either does not exist, or is private."
     }
-    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
+    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"footer": sup_templates["footer.html"].source,"paste_sidebar":paste_sidebar}
     ctx_dict["edit_paste"] = sup_templates["paste/main_no_exist.html"].render(Context(_ctx_dict))
 
   rendered = templates["paste_edit.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
+@routes.get("/tos")
+async def get_terms_of_service(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  app: web.Application = request.app
+
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+
+  ctx_dict = {
+    "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
+    "paste_sidebar": paste_sidebar
+  }
+
+  return web.Response(body=templates["legal/tos.html"].render(Context(ctx_dict)),content_type="text/html")
+
+@routes.get("/privacy")
+async def get_terms_of_service(request: web.Request) -> web.Response:
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  app: web.Application = request.app
+
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+
+  ctx_dict = {
+    "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
+    "paste_sidebar": paste_sidebar
+  }
+
+  return web.Response(body=templates["legal/privacy.html"].render(Context(ctx_dict)),content_type="text/html")
 
 @routes.get("/{tail:\w+$}")
 async def get_paste(request: web.Request) -> web.Response:
@@ -513,7 +610,7 @@ async def get_paste(request: web.Request) -> web.Response:
       **grand_context, 
       "title": "The paste you are looking for either does not exist, or is private."
     }
-    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"paste_sidebar":paste_sidebar}
+    ctx_dict: dict[str,Any] = {**grand_context, "navbar":navbar,"footer": sup_templates["footer.html"].source,"paste_sidebar":paste_sidebar}
     ctx_dict["paste"] = sup_templates["paste/main_no_exist.html"].render(Context(_ctx_dict))
 
   return web.Response(body=templates["paste.html"].render(Context(ctx_dict)),content_type="text/html")

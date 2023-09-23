@@ -3,9 +3,17 @@
   <div>
     <!-- Title Bar -->
     <a href="/{{ id }}">
-      <h1 class="title is-5" style="margin-bottom:3px;">{{ name }} | {{ date }} | </h1>
+      <div class="level" style="margin-bottom:3px;">
+        <div class="level-left">
+          <h1 class="title is-5">{{ name }}</h1>
+        </div>
+        <div class="level-right">
+          <h1 class="title is-5">{{ date }}</h1>
+        </div>
+      </div>
       <hr style="margin-top: 0px; margin-bottom:3px;">
       <div class="tags" style="margin-bottom: 0px;">
+        <a class="tag" href="/user/{{ author }}">{{ author }}</a>
         <span class="tag">{{ size }}</span>
         <span class="tag">{{ syntax }}</span>
       </div>

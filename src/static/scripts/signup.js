@@ -6,6 +6,7 @@ var usern_length_bad = false;
 var usern_exists_bad = false;
 var usern_chars_bad = false;
 var password_bad = false;
+var agree_terms = false;
 
 function signup() {
   var predicate = 
@@ -13,6 +14,7 @@ function signup() {
     usern_length_bad ||
     usern_chars_bad  ||
     email_bad        ||
+    !agree_terms     ||
     password_bad;
 
   if (predicate) { return; }
@@ -20,7 +22,7 @@ function signup() {
   var username   = document.getElementById("signup_username_text").value;
   var email      = document.getElementById("signup_email_text").value;
   var password   = document.getElementById("signup_password_text").value;
-  var rememberme = document.getElementById("signup_remember_me").value;
+  var rememberme = document.getElementById("signup_remember_me").checked;
 
   var packet = {
     "name":username,
@@ -28,7 +30,9 @@ function signup() {
     "password":password,
     "rememberme":rememberme,
   };
-
+  var signup_button = document.getElementById("signup_button");
+  signup_button.setAttribute("disabled",true);
+  signup_button.classList.add("is-loading");
   var request = new XMLHttpRequest();
   request.open("POST","api/internal/user/create/");
   request.setRequestHeader("Content-Type","application/json");
@@ -36,6 +40,10 @@ function signup() {
   request.onload = function() {
     if (request.status == 200) {
       window.location.replace("/");
+    } else {
+      signup_button.removeAttribute("disabled");
+      signup_button.classList.remove("is-loading");
+      create_popup("HTTP" + request.status + ": " + request.responseText);
     }
   }
 }
@@ -60,7 +68,7 @@ function set_check(id, state) {
     sign.setAttribute("icon",CHK);
     sign.style.color = "green";
   } else {
-    sign.setAttribute(X);
+    sign.setAttribute("icon",X);
     sign.style.color = "red";
   }
 }
@@ -68,12 +76,13 @@ function set_check(id, state) {
 function set_button() {
   var signup_button = document.getElementById("signup_button");
   var predicate = 
-    !usern_exists_bad && 
-    !usern_length_bad && 
-    !usern_chars_bad  &&
-    !email_bad        &&
-    !password_bad;
-  signup_button.disabled = !predicate;
+    usern_exists_bad || 
+    usern_length_bad || 
+    usern_chars_bad  ||
+    email_bad        ||
+    !agree_terms     ||
+    password_bad;
+  signup_button.disabled = predicate;
 }
 
 function set_username_check() {
@@ -189,6 +198,12 @@ window.addEventListener("load",function() {
         set_check("signup_password_check",true);
         password_warn.style.display = "none";
       }
+      set_button();
+    })
+
+    var agree_terms_box = document.getElementById("signup_agree_tos");
+    agree_terms_box.addEventListener("click", function() {
+      agree_terms = agree_terms_box.checked;
       set_button();
     })
   } catch {};
