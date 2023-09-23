@@ -74,7 +74,7 @@ async def api_login(request: web.Request) -> web.Response:
       record = await conn.fetchrow("SELECT InsecureToken FROM Users WHERE Id=$1;",user_token.owner.id)
       token = record["insecuretoken"]
       response = web.Response(status=200)
-      max_age = 2592000 if remember_me else -1
+      max_age = 2592000 if remember_me else None
       response.set_cookie("token",token,max_age=max_age,samesite="Lax")
       return response
 
@@ -369,7 +369,12 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
     return web.Response(status=400,body="username too long, max "+USERNAME_MAX_LENGTH)
   if not new_name.isalnum():
     return web.Response(status=400,body="invalid characters in username")
-  hashed_passwd = await ahash(new_passwd, new_name)
+  if "name" in data and "password" not in data:
+    return web.Response(status=400,body="name passed, missing password")
+  if "name" in data or "password" in data:
+    hashed_passwd = await ahash(new_passwd, new_name)
+  else:
+    hashed_passwd = old_user.password
 
   new_user = User(
     name=new_name,
@@ -386,7 +391,7 @@ async def api_internal_user_edit(request: web.Request) -> web.Response:
   if new_passwd != old_user.password:
     # invalidate the old securetoken, as it was regenerated inside of pg.update_user
     response.del_cookie("securetoken")
-  max_age = 2592000 if old_user.remember_me else -1
+  max_age = 2592000 if old_user.remember_me else None
   response.set_cookie("token",new_token,max_age=max_age,samesite="Lax")
   return response
 
