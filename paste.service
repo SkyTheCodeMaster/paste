@@ -1,0 +1,18 @@
+[Unit]
+Description=Simple paste server
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=yes
+# change these. idk how to make a generic one lol
+User=sky
+WorkingDirectory=/home/sky/paste/src
+ExecStart=/home/sky/paste/src/run.sh
+StandardError=journal
+StandardOutput=journal
+StandardInput=null
+
+[Install]
+WantedBy=multi-user.target
