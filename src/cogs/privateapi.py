@@ -325,7 +325,8 @@ async def api_internal_user_get(request: web.Request) -> web.Response:
     "username": target_user.name,
     "avatar": join_url_path(PUBLIC_URL, f"/api/internal/user/avatar/?user={target_user.name}"),
     "total_pastes": pastes_count,
-    "join": target_user.joindate
+    "join": target_user.joindate,
+    "folders": await pg.get_user_folders(target_user)
   }
 
   if token.owner == target_user and token.secure:

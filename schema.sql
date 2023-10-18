@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS Pastes (
   Created BIGINT,
   Modified BIGINT,
   Syntax TEXT,
-  Tags TEXT
+  Tags TEXT,
+  Folder TEXT -- This is the folder the paste is in, used for the website or something idk
 );
 
 CREATE TABLE IF NOT EXISTS APITokens (

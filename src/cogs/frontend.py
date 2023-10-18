@@ -242,9 +242,10 @@ async def get_index(request: web.Request) -> web.Response:
   rendered = templates["login/signup.html"].render(Context(ctx_dict))
   return web.Response(body=rendered,content_type="text/html")
 
-@routes.get("/user/{tail:\w+$}")
+@routes.get("/user/{user_name:\w+}/")
 async def get_user(request: web.Request) -> web.Response:
-  user_name: str = request.path.removeprefix("/user/")
+  user_name = request.match_info["user_name"]
+  print(user_name)
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
@@ -271,8 +272,14 @@ async def get_user(request: web.Request) -> web.Response:
 
   pastes: list[Paste] = await pg.get_pastes_from_creator(creator=user.id)
   if not authorized:
-    pastes = list(filter(lambda paste: paste.visibility == 1), pastes)
+    pastes = list(filter(lambda paste: paste.visibility == 1, pastes))
   pastes = sorted(pastes, key=lambda paste: -paste.created)
+
+  folders: set[dict] = set()
+  for paste in pastes.copy():
+    if paste.folder:
+      folders.add(paste.folder)
+      pastes.remove(paste)
 
   def suffix(x):
     if len(str(x)) > 1 and str(x)[-2] == "1":
@@ -321,6 +328,99 @@ async def get_user(request: web.Request) -> web.Response:
   }
 
   ctx_dict = {
+    "folders": folders,
+    "pastes": template_pastes,
+    "user": c_user,
+    "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
+    "paste_sidebar": paste_sidebar,
+  }
+  rendered = templates["user/exists.html"].render(Context(ctx_dict))
+  return web.Response(body=rendered,content_type="text/html")
+
+@routes.get("/user/{user_name:\w+}/{folder:\w+}/")
+async def get_user(request: web.Request) -> web.Response:
+  user_name = request.match_info["user_name"]
+  folder = request.match_info["folder"]
+  print(user_name)
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  user: User = await pg.get_user(name=user_name.lower())
+
+  # Check devmode
+  if config["devmode"]:
+    reload_files()
+  # Load the index.html template
+  paste_sidebar = await prepare_sidebar(request, PASTE_SIDEBAR_NUM_SHOW)
+  navbar = await prepare_navbar(request)
+
+  if not user:
+    ctx_dict = {
+      "navbar": navbar,
+    "footer": sup_templates["footer.html"].source,
+      "paste_sidebar": paste_sidebar
+    }
+    rendered = templates["user/not_exists.html"].render(Context(ctx_dict))
+    return web.Response(body=rendered,content_type="text/html")
+
+  token = await pg.handle_auth(request,strict_password=True,no_exist_ok=True)
+  authorized = type(token) is Token
+
+  pastes: list[Paste] = await pg.get_pastes_from_creator(creator=user.id)
+  if not authorized:
+    pastes = list(filter(lambda paste: paste.visibility == 1, pastes))
+  pastes = sorted(pastes, key=lambda paste: -paste.created)
+  pastes = list(filter(lambda paste: paste.folder == folder, pastes))
+
+  def suffix(x):
+    if len(str(x)) > 1 and str(x)[-2] == "1":
+      return f"{x}th"
+    elif x % 10 == 1:
+      return f"{x}st"
+    elif x % 10 == 2:
+      return f"{x}nd"
+    elif x % 10 == 3:
+      return f"{x}rd"
+    else:
+      return f"{x}th"
+    
+  def ftime(format, t):
+    return t.strftime(format).replace('{S}', suffix(t.day))
+  
+  visibility_icon = {
+    1: "vaadin:globe",
+    2: "system-uicons:chain",
+    3: "mdi:lock"
+  }
+  visibility_title = {
+    1: "This paste is globally accessible by anyone.",
+    2: "This paste is only accessible to those with the link.",
+    3: "This paste is only accessible by you."
+  }
+
+  template_pastes = [
+    {
+      "title": paste.title,
+      "real_time": ftime("%b {S}, %Y",datetime.datetime.fromtimestamp(paste.created, datetime.timezone.utc)),
+      "relative_time":humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(paste.created,datetime.timezone.utc)),
+      "size":humanize.naturalsize(len(paste.data),gnu=True),
+      "id": paste.id,
+      "Syntax": paste.syntax.title(),
+      "visibility_icon": visibility_icon[paste.visibility],
+      "visibility_title": visibility_title[paste.visibility]
+    }
+    for paste in pastes
+  ]
+
+  c_user = {
+    "name": user.name,
+    "join": ftime("%b {S}, %Y",datetime.datetime.fromtimestamp(user.joindate, datetime.timezone.utc)),
+    "relative_join": humanize.naturaltime(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromtimestamp(user.joindate,datetime.timezone.utc))
+  }
+
+  ctx_dict = {
+    "folder_name": f"{folder} folder",
     "pastes": template_pastes,
     "user": c_user,
     "navbar": navbar,
@@ -621,7 +721,8 @@ async def get_paste(request: web.Request) -> web.Response:
       "Syntax": paste.syntax.title(),
       "syntax": paste.syntax,
       "linerange": range(text_content.count("\n")+1),
-      "tags": paste.tags and paste.tags.split(",") or False
+      "tags": paste.tags and paste.tags.split(",") or False,
+      "folder": paste.folder
     }
     p_owner: User = await paste.get_creator(pg)
     _ctx_dict["user"] = {

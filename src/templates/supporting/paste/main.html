@@ -41,6 +41,11 @@
         <div class="level-item">
           <span class="tag has-background-grey-lighter">{{ paste.size }}</span>
         </div>
+        {% if paste.folder %}
+          <div class="level-item">
+            <span class="tag has-background-grey-lighter">{{ paste.folder }}</span>
+          </div>
+        {% endif %}
       </div>
       <div class="level-right">
         <div class="level-item">

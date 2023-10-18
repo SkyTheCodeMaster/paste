@@ -145,6 +145,7 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return token
   
   data: dict = await request.json()
+  print(data)
   if (not data.get("title")) or (not data.get("content")) or (type(data.get("visibility",None)) is not int):
     return web.Response(status=400,text="missing body element")
 
@@ -162,7 +163,8 @@ async def api_paste_create(request: web.Request) -> web.Response:
     visibility=data.get("visibility"),
     title=data.get("title"),
     syntax=syntax,
-    tags=data.get("tags","")
+    tags=data.get("tags",""),
+    folder=data.get("folder","")
   )
 
   newPaste,reason = await pg.create_new_paste(paste,token)
@@ -196,6 +198,7 @@ async def api_paste_edit(request: web.Request) -> web.Response:
   paste.data = (data.get("content",paste.data)).encode()
   paste.tags = data.get("tags",paste.tags)
   paste.syntax = data.get("syntax",paste.syntax)
+  paste.folder = data.get("folder",paste.folder)
 
   try:
     paste.visibility = int(data.get("visibility",paste.visibility))

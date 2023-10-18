@@ -260,9 +260,9 @@ class PGUtils:
       await conn.execute("""
         INSERT INTO 
           Pastes
-            (id,creator,content,visibility,title,created,modified,syntax,tags) 
+            (id,creator,content,visibility,title,created,modified,syntax,tags,folder) 
         VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9,$10);
         """,
         pasteID,
         token.owner.id,
@@ -272,7 +272,8 @@ class PGUtils:
         self._time(),
         self._time(),
         paste.syntax,
-        paste.tags
+        paste.tags,
+        paste.folder
       )
       return (await self.get_pastes_from_search(id=pasteID))[0],""
 
@@ -299,7 +300,8 @@ class PGUtils:
                               Visibility = $3, 
                               Modified=$5, 
                               Syntax = $6,
-                              tags = $7
+                              tags = $7,
+                              folder = $8
                             WHERE 
                               id = $4""",
                          paste.data,
@@ -308,7 +310,8 @@ class PGUtils:
                          nPaste.id,
                          self._time(),
                          paste.syntax,
-                         paste.tags
+                         paste.tags,
+                         paste.folder
       )
       return (await self.get_pastes_from_search(id=nPaste.id))[0]
 
@@ -431,3 +434,12 @@ class PGUtils:
       else:
         count = (await conn.fetchrow("SELECT COUNT(*) FROM Pastes WHERE Creator=$1 AND Visibility=1;", user))["count"]
       return count
+    
+  async def get_user_folders(self, user: Union[int,User]) -> list[str]:
+    if type(user) is User:
+      user = user.id
+    async with self.pool.acquire() as conn:
+      folders_record = await conn.fetch("SELECT DISTINCT Folder FROM Pastes WHERE Creator=$1;", user)
+      print(folders_record)
+      folders = [record["folder"] for record in folders_record]
+      return folders

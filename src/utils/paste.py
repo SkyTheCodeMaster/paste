@@ -29,6 +29,7 @@ class Paste:
   modified: int
   syntax: str 
   tags: str
+  folder: str
 
   def __init__(self,*,
     id: str, 
@@ -39,7 +40,8 @@ class Paste:
     created: int = None, 
     modified: int = None, 
     syntax: str = None, 
-    tags: str = None
+    tags: str = None,
+    folder: str = None
   ) -> None:
     self.id = id
     self.creator = creator
@@ -50,6 +52,7 @@ class Paste:
     self.modified = modified
     self.syntax = syntax
     self.tags = tags
+    self.folder = folder
   
   @property
   def url(self) -> str:
@@ -67,6 +70,7 @@ class Paste:
       "modified": self.modified,
       "syntax": self.syntax,
       "tags": self.tags,
+      "folder": self.folder,
     }
     return json.dumps(out)
 
@@ -107,6 +111,7 @@ class Paste:
       modified=record["modified"],
       syntax=record["syntax"],
       tags=record["tags"],
+      folder=record["folder"]
     )
     return paste
 
@@ -121,6 +126,7 @@ class Paste:
       modified=self.modified,
       syntax=self.syntax,
       tags=self.tags,
+      folder=self.folder
     )
     return newPaste
 
@@ -135,4 +141,5 @@ class Paste:
     self.modified = paste.modified,
     self.syntax = paste.syntax
     self.tags = paste.tags
+    self.folder = paste.folder
     return self

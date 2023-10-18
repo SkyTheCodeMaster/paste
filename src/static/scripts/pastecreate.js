@@ -12,13 +12,15 @@ function create_paste(submit_button) {
   var paste_content = document.getElementById("paste_edit_textarea").value;
   var paste_title = document.getElementById("paste_title_input").value;
   var paste_visibility = vis_enum[document.getElementById("paste_visibility_select").value.toLowerCase()];
+  var paste_folder = document.getElementById("paste_folder_input").value;
 
   var packet = {
     "title": paste_title == "" ? "Untitled" : paste_title,
     "content": paste_content,
     "syntax": selected_language,
     "tags": paste_tag.items.join(","),
-    "visibility": paste_visibility
+    "visibility": paste_visibility,
+    "folder": paste_folder
   }
 
   console.log(packet);
@@ -139,4 +141,25 @@ window.addEventListener("load", function() {
       });
     } catch {};
   })
+
+  // Fill in user folders
+
+  try {
+    var datalist = document.getElementById("user_folder_list");
+    var folder_request = new XMLHttpRequest();
+    folder_request.open("GET","/api/internal/user/get/");
+    folder_request.send();
+    folder_request.onload = function() {
+      if (folder_request.stats == 200) {
+        var data = JSON.parse(folder_request.textContent);
+
+        var folder_names = data["folders"];
+        for (var folder of folder_names) {
+          var opt = document.createElement("option");
+          opt.value = folder;
+          datalist.appendChild(opt);
+        }
+      }
+    }
+  } catch {}
 });
