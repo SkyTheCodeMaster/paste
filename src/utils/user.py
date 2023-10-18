@@ -6,7 +6,9 @@ if TYPE_CHECKING:
   from typing_extensions import Self
   from asyncpg import Record
 
-class User():
+
+
+class User:
   name: str
   password: str # this is the hashed/salted/whatever password
   email: str
@@ -77,3 +79,10 @@ class User():
       joindate=record["joindate"],
       remember_me=record["rememberme"]
     )
+  
+class DeletedUser(User):
+  "Represents a deleted user"
+  def __init__(self):
+    self.name = "Deleted User"
+    self.email = "N/A"
+    self.id = -1

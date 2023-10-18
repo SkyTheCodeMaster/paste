@@ -114,11 +114,12 @@ async def api_internal_user_create(request: web.Request) -> web.Response:
     passwd = await ahash(passwd,name)
   user = User(name=name,password=passwd,email=email,remember_me=remember_me)
   new_id = await pg.create_new_user(user)
+  await pg.generate_new_user_token(new_id, True)
   user.id = new_id
   if type(new_id) is int:
     new_token = await pg.generate_new_user_token(user)
     response = web.Response(status=200,body=str(new_id))
-    max_age = 2592000 if remember_me else -1
+    max_age = 2592000 if remember_me else None
     response.set_cookie("token",new_token,max_age=max_age,samesite="Lax")
     return response
   else:
@@ -290,7 +291,7 @@ async def api_internal_user_refreshtoken(request: web.Request) -> web.Response:
   insecure_token = await pg.generate_new_user_token(token.owner)
   await pg.generate_new_user_token(token.owner,True)
   response = web.Response(status=200)
-  max_age = 2592000 if token.owner.remember_me else -1
+  max_age = 2592000 if token.owner.remember_me else None
   response.set_cookie("token", insecure_token, max_age=max_age, samesite="Lax")
   response.del_cookie("securetoken")
   return response
@@ -411,7 +412,7 @@ async def api_internal_user_data(request: web.Request) -> web.Response:
     return token
 
   path = await pg.create_datadump(token.owner)
-  return web.FileResponse(path)
+  return web.FileResponse(path, headers={"Content-Disposition": "attachment;filename=pastes.zip"})
 
 @routes.delete("/api/internal/user/delete")
 async def api_internal_user_delete(request: web.Request) -> web.Response:
@@ -430,10 +431,9 @@ async def api_internal_user_delete(request: web.Request) -> web.Response:
   token = await pg.handle_auth(request,strict_password=True, secure=True)
   if type(token) is web.Response:
     return token
-
-  path = await pg.create_datadump(token.owner)
-  await pg.delete_user(token.owner, delete_pastes=headers.get("delete-pastes",True))
-  return web.FileResponse(path)
+  delete_pastes = headers.get("delete-pastes",True).lower() == "true"
+  await pg.delete_user(token.owner, delete_pastes=delete_pastes)
+  return web.Response()
 
 @routes.post("/api/internal/token/create/")
 async def api_internal_token_create(request: web.Request) -> web.Response:
@@ -457,14 +457,16 @@ async def api_internal_token_create(request: web.Request) -> web.Response:
     return user_token
 
   data = await request.json()
-  if not "name" in data or not "perms" in data or data["perms"] > 255:
-    return web.Response(status=400)
+  if not "name" in data:
+    return web.Response(status=400, body="missing name")
+  if not "perms" in data or data["perms"] > 15:
+    return web.Response(status=400, body="perms bad (not present; invalid value)")
 
   # Build the token object
-  token = Token(name=data["name"],owner=user_token.owner,permissions=data["perms"],id="")
+  token = Token(name=data["name"],owner=user_token.owner,permissions=data["perms"],id="",ident="")
   # Add it to the database
-  new_id = await pg.create_token(token)
-  return web.Response(body=new_id)
+  new_token = await pg.create_token(token)
+  return web.Response(body=new_token.id)
 
 @routes.post("/api/internal/token/edit/")
 async def api_internal_token_edit(request: web.Request) -> web.Response:
@@ -490,16 +492,16 @@ async def api_internal_token_edit(request: web.Request) -> web.Response:
 
   data = await request.json()
   if not "id" in data:
-    return web.Response(status=400)
-  if "perms" in data and data["perms"] > 255:
-    return web.Response(status=400)
+    return web.Response(status=400, body="missing id in data")
+  if "perms" in data and data["perms"] > 15:
+    return web.Response(status=400, body="perms integer is too big")
 
   token = await pg.verify_token(data["id"])
-  await pg.edit_token(token,
-    perms="perms" in data and data["perms"] or None,
-    name ="name"  in data and data["name"]  or None,
+  result = await pg.edit_token(token,
+    perms=data.get("perms",None),
+    name =data.get("name",None),
   )
-  return web.Response(status=200)
+  return web.Response(status=200 if result else 500)
 
 @routes.delete("/api/internal/token/delete/")
 async def api_internal_token_delete(request: web.Request) -> web.Response:
@@ -529,6 +531,22 @@ async def api_internal_token_delete(request: web.Request) -> web.Response:
     return web.Response(status=200)
   else:
     return web.Response(status=500)
+  
+@routes.get("/api/internal/token/get/")
+async def api_internal_token_get(request: web.Request) -> web.Response:
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  user_token = await pg.handle_auth(request,strict_password=True, secure=True)
+  if type(user_token) is web.Response:
+    return user_token
+  
+  token_name = request.query.get("name",None)
+  if token_name is None:
+    return web.Response(body="must pass token name in query 'name'",status=400)
+  
+  token = await pg.get_token(user_token.owner, token_name)
+  return web.Response(body=token.json, content_type="application/json")
 
 def setup() -> web.RouteTableDef:
   return routes

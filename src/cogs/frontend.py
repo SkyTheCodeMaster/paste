@@ -371,6 +371,28 @@ async def get_settings_subpage(request: web.Request) -> web.Response:
     }
   }
 
+  if subpage == "apitokens":
+    tokens_list = await pg.get_tokens_from_user(user)
+
+    def apply_icons(tok: Token):
+      get_icon = lambda x: "mdi:check" if x else "ph:x"
+      perms = tok.permissions
+      d = {
+        "name": tok.name,
+        "id": tok.ident,
+        "perm": {
+          "create": get_icon(perms.create_paste),
+          "edit": get_icon(perms.edit_paste),
+          "delete": get_icon(perms.delete_paste),
+          "viewpriv": get_icon(perms.view_private)
+        }
+      }
+      return d
+
+    _ctx_dict["tokens"] = {
+      "list": [apply_icons(tk) for tk in tokens_list]
+    }
+
   settings_content = page_template.render(Context(_ctx_dict))
 
   ctx_dict = {
@@ -382,6 +404,8 @@ async def get_settings_subpage(request: web.Request) -> web.Response:
     "config": {
       "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
       "USERNAME_MIN_LENGTH": USERNAME_MIN_LENGTH,
+      "PASSWORD_MAX_LENGTH": PASSWORD_MAX_LENGTH,
+      "PASSWORD_MIN_LENGTH": PASSWORD_MIN_LENGTH,
     }
   }
   rendered = templates["settings/main.html"].render(Context(ctx_dict))

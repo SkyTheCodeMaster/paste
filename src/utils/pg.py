@@ -17,12 +17,12 @@ import asyncpg
 
 from utils.paste import Paste
 from utils.token import Token
-from utils.user import User
+from utils.user import User, DeletedUser
 from utils.utils import ahash
 from aiohttp import web
 
 if TYPE_CHECKING:
-  from typing import Union
+  from typing import Union, Any, Coroutine
 
 LOG = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class PGUtils:
       if record:
         return User.from_record(record)
       else:
-        return None
+        return type(id) is int and DeletedUser() or None
 
   async def create_new_user(self,user: User) -> int:
     "Create a new user, and return the ID of the user."
@@ -176,6 +176,7 @@ class PGUtils:
           owner=user,
           permissions=record["perms"],
           id=record["id"],
+          ident=record["ident"]
         )
         return token
       record = await conn.fetchrow("SELECT * FROM Users WHERE Password = $1 OR SecureToken = $1 OR InsecureToken = $1;",token)
@@ -186,7 +187,8 @@ class PGUtils:
             name="SECUREPASSWORD",
             owner=user,
             permissions=255,
-            id=token
+            id=token,
+            ident="NONE"
           )
           return token
         if record["insecuretoken"] == token:
@@ -195,46 +197,53 @@ class PGUtils:
             name="INSECUREPASSWORD",
             owner=user,
             permissions=255,
-            id=token
+            id=token,
+            ident="NONE"
           )
           return token
     return False
 
-  async def _generate_paste_id(self) -> str:
+  async def _generate_paste_id(self, *, conn: asyncpg.Connection = None) -> str:
     "Generate an ID, while making sure it does not exist in the database already."
     pool: str = string.ascii_letters+string.digits
     pasteID = "".join(random.choices(pool,k=PASTE_ID_LENGTH))
-    async with self.pool.acquire() as conn:
-      record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Pastes WHERE Id = $1);",pasteID)
-      if record["exists"]:
-        return await self._generate_paste_id()
-      else:
-        return pasteID
+    if conn is None:
+      conn = await self.pool.acquire()
+    record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Pastes WHERE Id = $1);",pasteID)
+    if record["exists"]:
+      return await self._generate_paste_id()
+    else:
+      await self.pool.release(conn)
+      return pasteID
 
-  async def _generate_token_id(self) -> str:
+  async def _generate_token_id(self, *, conn: asyncpg.Connection = None) -> str:
     "Generate an ID, while making sure it does not exist in the database already."
     pool: str = string.ascii_letters+string.digits
     tokenID = "".join(random.choices(pool,k=TOKEN_ID_LENGTH))
-    async with self.pool.acquire() as conn:
-      record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM APITokens WHERE Id = $1);",tokenID)
-      if record["exists"]:
-        return await self._generate_token_id()
-      else:
-        return tokenID
+    if conn is None:
+      conn = await self.pool.acquire()
+    record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM APITokens WHERE Id = $1 OR Ident = $1);",tokenID)
+    if record["exists"]:
+      return await self._generate_token_id(conn=conn)
+    else:
+      await self.pool.release(conn)
+      return tokenID
 
-  async def _generate_user_token_id(self, secure: bool) -> str:
+  async def _generate_user_token_id(self, secure: bool, *, conn: asyncpg.Connection = None) -> str:
     "Generate an ID, while making sure it does not exist in the database already."
     pool: str = string.ascii_letters+string.digits
     tokenID = "".join(random.choices(pool,k=TOKEN_ID_LENGTH))
-    async with self.pool.acquire() as conn:
-      if secure:
-        record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE SecureToken = $1);",tokenID)
-      else:
-        record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE InsecureToken = $1);",tokenID)
-      if record["exists"]:
-        return await self._generate_user_token_id()
-      else:
-        return tokenID
+    if conn is None:
+      conn = await self.pool.acquire()
+    if secure:
+      record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE SecureToken = $1);",tokenID)
+    else:
+      record = await conn.fetchrow("SELECT EXISTS (SELECT 1 FROM Users WHERE InsecureToken = $1);",tokenID)
+    if record["exists"]:
+      return await self._generate_user_token_id(conn=conn)
+    else:
+      await self.pool.release(conn)
+      return tokenID
 
   async def create_new_paste(self, paste: Paste, token: Union[Token,str]) -> Union[Paste,bool]:
     "Create a new paste, returning the paste object with the ID field set. The ID field will be overwritten with the new one. Token is used for determining who owns the paste, and if this token can create pastes."
@@ -332,10 +341,17 @@ class PGUtils:
     except: pass
     await aos.makedirs(f"/tmp/paste_server/{user.id}/",exist_ok=True)
     for paste in pastes:
-      async with aiofiles.open(f"/tmp/paste_server/{user.id}/{paste.id} ({paste.title}).txt","w") as f:
+      async with aiofiles.open(f"/tmp/paste_server/{user.id}/{paste.title} ({paste.id}).txt","w") as f:
         await f.write(paste.text_content)
     await aioshutil.make_archive(f"/tmp/paste_server/{user.id}","zip",f"/tmp/paste_server/{user.id}/")
     return f"/tmp/paste_server/{user.id}.zip"
+  
+  async def get_token(self, user: User, token_name: str) -> Token:
+    user_id = user.id
+    async with self.pool.acquire() as conn:
+      record = await conn.fetchrow("SELECT * FROM APITokens WHERE Creator = $1 AND (Title = $2 OR Ident = $2);", user_id, token_name)
+      if not record: return False
+      return Token.from_record(record,user)
 
   async def delete_user(self, user: User, *, delete_pastes: bool = True) -> bool:
     user_id = user.id
@@ -354,22 +370,26 @@ class PGUtils:
     async with self.pool.acquire() as conn:
       try:
         id = await self._generate_token_id()
-        await conn.execute("INSERT INTO APITokens (Creator, Title, Perms, Id) VALUES ($1,$2,$3,$4);",token.owner.id,token.name,token.perms,id)
+        ident = await self._generate_token_id()
+        await conn.execute("INSERT INTO APITokens (Creator, Title, Perms, Id, Ident) VALUES ($1,$2,$3,$4,$5);",token.owner.id,token.name,token.perms,id,ident)
         token.id = id
-        return Token
+        token.ident = ident
+        return token
       except:
+        LOG.exception("Error in create_token")
         return False
 
   async def edit_token(self, token: Token, *, name: str = None, perms: int = None) -> Union[Token,False]:
     async with self.pool.acquire() as conn:
       try:
-        await conn.execute("UPDATE APITokens SET name=$3, perms=$4 WHERE id=$1 AND Creator=$2;",
+        await conn.execute("UPDATE APITokens SET title=$3, perms=$4 WHERE id=$1 AND Creator=$2;",
         token.id,token.owner.id,
         name if name is not None else token.name,
         perms if perms is not None else token.perms
         )
         return await self.verify_token(token.id)
       except:
+        LOG.exception("Error in edit_token")
         return False
 
   async def delete_token(self, token: Token) -> bool:
@@ -379,6 +399,17 @@ class PGUtils:
         return True
       except:
         return False
+      
+  async def get_tokens_from_user(self, user: int|User) -> Coroutine[Any, Any, list[Token]]:
+    if type(user) is User:
+      user_id = user.id
+    else:
+      user = await self.get_user(id=user)
+      user_id = user.id
+    async with self.pool.acquire() as conn:
+      records = await conn.fetch("SELECT * FROM APITokens WHERE Creator=$1;", user_id)
+      tokens = [Token.from_record(record, user) for record in records]
+      return tokens
 
   async def generate_new_user_token(self, user: Union[int,User], regen_secure: bool = False) -> str:
     if type(user) is User:

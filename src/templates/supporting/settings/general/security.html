@@ -1,0 +1,115 @@
+<!-- these are the various funny modals -->
+
+<div class="modal" id="modal-change-password">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Change Password</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-change-password')"></button>
+    </header>
+    <section class="modal-card-body">
+      <input class="input" type="password" placeholder="Enter your OLD password here." id="modal-password-textbox-old">
+      <input class="input" type="password" placeholder="Enter your NEW password here." id="modal-password-textbox-new">
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="change_password()" id="modal-password-button-submit">Submit</button>
+      <button class="button" onclick="close_modal('modal-change-password')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-delete-account">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Delete Account</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-delete-account')"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="content">
+        Deleting your account should happen instantly, and you have the option to delete all of your pastes, and download them before deleting your account.<br>
+        Downloading all of your pastes simply downloads all of your pastes in a zip file.<br>
+        Your pastes will be downloaded before deleting them.
+      </div>
+      <input class="input" type="password" placeholder="Enter your password here." id="modal-delete-account-textbox">
+      <label class="checkbox">
+        <input type="checkbox" id="modal-delete-account-checkbox-delete-all-pastes">
+        Delete ALL my pastes
+      </label><br>
+      <label class="checkbox">
+        <input type="checkbox" id="modal-delete-account-checkbox-download-pastes">
+        Download all my pastes
+      </label>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-danger" onclick="delete_account()" id="modal-delete-account-button-submit">Submit</button>
+      <button class="button" onclick="close_modal('modal-delete-account')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-download-datadump">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Change Password</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-download-datadump')"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="content">
+        A datadump is simply all of your pastes in a zip file.
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="download_datadump()" id="modal-download-button-submit">Download</button>
+      <button class="button" onclick="close_modal('modal-download-datadump')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-refresh-token">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Refresh Token</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-refresh-token')"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="content">
+        There are 2 tokens, the "insecure" and the "secure" one.<br>
+        The insecure token simply authenticates you as you, for creating/editing/deleting pastes, and viewing some settings.<br>
+        The secure token is how you authenticate to change critical settings.<br>
+        This will reset both of them (which will exit sudo mode aswell.).<br>
+        Changing your password <i>also</i> resets both tokens.
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="refresh_token()" id="modal-refresh-token-button-submit">Refresh Tokens</button>
+      <button class="button" onclick="close_modal('modal-refresh-token')">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<!-- this is actually the page or something idk -->
+<h1 class="title is-3">Security Settings</h1>
+<div class="level">
+  <div class="level-item">
+    <div class="box" style="width:fit-content;">
+      <h1 class="title is-5 has-text-centered">Password</h1>
+      <button class="button is-danger" onclick="open_modal('modal-change-password')">Change Password</button>
+    </div>
+  </div>
+  <div class="level-item">
+    <div class="box" style="width:fit-content;">
+      <h1 class="title is-5 has-text-centered">Account</h1>
+      <button class="button is-danger" onclick="open_modal('modal-delete-account')">Delete Account</button>
+      <button class="button is-primary" onclick="open_modal('modal-refresh-token')">Refresh Tokens</button>
+    </div>
+  </div>
+  <div class="level-item">
+    <div class="box " style="width:fit-content;">
+      <h1 class="title is-5 has-text-centered">Data</h1>
+      <button class="button is-primary" onclick="sudo_open_modal('modal-download-datadump')">Download Datadump</button>
+    </div>
+  </div>
+</div>

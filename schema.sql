@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS APITokens (
   Creator BIGINT,
   Title TEXT,
   Perms INT,
-  id TEXT
+  id TEXT,
+  ident TEXT
 );
 
 CREATE TABLE IF NOT EXISTS AvatarCache (

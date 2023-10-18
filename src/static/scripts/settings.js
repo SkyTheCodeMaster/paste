@@ -5,6 +5,19 @@ const PASSWORD_MAX_LENGTH = document.getElementById("username_data").getAttribut
 
 var _password; // The password has to be stored in plaintext for changing the username. Better UX
                // than having the user enter their password when changing their username.
+var user_data; // Store info from securelogin, like username
+var token_delete_id; // Token ID to be deleted
+var token_edit_id;
+
+function format(_format) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return _format.replace(/{(\d+)}/g, function(match, number) { 
+    return typeof args[number] != 'undefined'
+      ? args[number] 
+      : match
+    ;
+  });
+};
 
 function close_all_modals() {
   (document.querySelectorAll(".modal") || []).forEach( (modal) => {
@@ -31,6 +44,23 @@ function get_cookie(name) {
   return null;
 }
 
+async function fill_user_data() {
+  if (user_data == null) {
+    var user_data_request = new XMLHttpRequest();
+    user_data_request.open("GET","/api/internal/user/get/");
+    user_data_request.send();
+    user_data_request.onload = function() {
+      var data = JSON.parse(user_data_request.responseText);
+      user_data = data;
+    }
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = user_data == null;
+    }
+  }
+}
+
 function sudo_secure_login() {
   document.getElementById("modal-sudo-invalid-password").classList.add("is-hidden");
   document.getElementById("modal-sudo-submit").classList.add("is-loading");
@@ -45,6 +75,7 @@ function sudo_secure_login() {
   username_request.send();
   username_request.onload = function() {
     var data = JSON.parse(username_request.responseText);
+    user_data = data;
     var username = data.username;
     var secure_request = new XMLHttpRequest();
     secure_request.open("POST", "/api/login/");
@@ -226,12 +257,372 @@ async function change_avatar() {
     } else {
       create_popup("HTTP" + request.status + ": " + request.responseText,true);
       document.getElementById("modal-avatar-change-button-submit").classList.remove("is-loading");
-      document.getElementById("modal-avatar-change-button-submit").removeAttribute("disabled",false);
+      document.getElementById("modal-avatar-change-button-submit").removeAttribute("disabled");
+    }
+  }
+}
+
+function download_datadump() {
+  window.open("/api/internal/user/data/");
+  close_modal("modal-download-datadump");
+}
+
+function refresh_token() {
+  document.getElementById("modal-refresh-token-button-submit").classList.add("is-loading");
+  document.getElementById("modal-refresh-token-button-submit").setAttribute("disabled",true);
+  var token_request = new XMLHttpRequest();
+  token_request.open("POST","/api/internal/user/refreshtoken/");
+  token_request.send();
+  token_request.onload = function() {
+    if (token_request.status == 200) {
+      document.getElementById("modal-refresh-token-button-submit").classList.remove("is-loading");
+      document.getElementById("modal-refresh-token-button-submit").removeAttribute("disabled");
+      append_alert("Successfully resest tokens!");
+      close_modal("modal-refresh-token");
+      window.location.replace("/");
+    } else {
+      document.getElementById("modal-refresh-token-button-submit").classList.remove("is-loading");
+      document.getElementById("modal-refresh-token-button-submit").removeAttribute("disabled");
+      create_popup("HTTP" + token_request.status + ": " + token_request.responseText,true);
+    }
+  }
+}
+
+async function change_password() {
+  document.getElementById("modal-password-button-submit").classList.add("is-loading");
+  document.getElementById("modal-password-button-submit").setAttribute("disabled",true);
+
+  var old_password = document.getElementById("modal-password-textbox-old").value;
+  var new_password = document.getElementById("modal-password-textbox-new").value;
+
+  // Pre request length check
+  if (new_password.length > PASSWORD_MAX_LENGTH) {
+    create_popup("Password too long; max " + PASSWORD_MAX_LENGTH, true);
+    document.getElementById("modal-password-button-submit").classList.remove("is-loading");
+    document.getElementById("modal-password-button-submit").removeAttribute("disabled");
+  }
+  if (new_password.length < PASSWORD_MIN_LENGTH) {
+    create_popup("Password too short; min " + PASSWORD_MIN_LENGTH, true);
+    document.getElementById("modal-password-button-submit").classList.remove("is-loading");
+    document.getElementById("modal-password-button-submit").removeAttribute("disabled");
+  }
+
+  await fill_user_data();
+
+  // Check if old password is correct. Log in.
+  var login_request = new XMLHttpRequest();
+  login_request.open("POST","/api/login/");
+  var params = {
+    "password": old_password,
+    "name": user_data.username,
+    "secure": true
+  };
+  login_request.send(JSON.stringify(params));
+  login_request.onload = function() {
+    if (login_request.status == 200) {
+      var edit_request = new XMLHttpRequest();
+      edit_request.open("POST","/api/internal/user/edit/");
+      var edit_params = {
+        "password": new_password
+      }
+      edit_request.send(JSON.stringify(edit_params));
+      edit_request.onload = function() {
+        if (edit_request.status == 200) {
+          append_alert("Successfully edited password!");
+          document.getElementById("modal-password-button-submit").classList.remove("is-loading");
+          document.getElementById("modal-password-button-submit").removeAttribute("disabled");
+          window.location.replace("/settings/security");
+        } else {
+          document.getElementById("modal-password-button-submit").classList.remove("is-loading");
+          document.getElementById("modal-password-button-submit").removeAttribute("disabled");
+          create_popup("HTTP" + login_request.status + ": " + login_request.responseText,true);
+        }
+      }
+    } else {
+      document.getElementById("modal-password-button-submit").classList.remove("is-loading");
+      document.getElementById("modal-password-button-submit").removeAttribute("disabled");
+      create_popup("Old password incorrect",true);
+    }
+  }
+}
+
+async function delete_account() {
+  document.getElementById("modal-delete-account-button-submit").classList.add("is-loading");
+  document.getElementById("modal-delete-account-button-submit").setAttribute("disabled",true);
+
+  var password = document.getElementById("modal-delete-account-textbox").value;
+  var delete_pastes = document.getElementById("modal-delete-account-checkbox-delete-all-pastes").checked;
+  var download_pastes = document.getElementById("modal-delete-account-checkbox-download-pastes").checked;
+
+  if (password === "") {
+    create_popup("Please enter password!",true);
+    document.getElementById("modal-delete-account-button-submit").classList.remove("is-loading");
+    document.getElementById("modal-delete-account-button-submit").removeAttribute("disabled");
+  }
+
+  await fill_user_data();
+
+  // Now login to see if password is correct.
+  var login_request = new XMLHttpRequest();
+  login_request.open("POST","/api/login/");
+  var params = {
+    "password": password,
+    "name": user_data.username,
+    "secure": true
+  };
+  login_request.send(JSON.stringify(params));
+  login_request.onload = function() {
+    if (login_request.status == 200) {
+
+      if (download_pastes) {
+        window.open("/api/internal/user/data/");
+      }
+      var delete_request = new XMLHttpRequest();
+      delete_request.open("DELETE","/api/internal/user/delete");
+      delete_request.setRequestHeader("delete-pastes", delete_pastes)
+      delete_request.send();
+      delete_request.onload = function() {
+        if (delete_request.status == 200) {
+          append_alert("Successfully deleted account!");
+          document.getElementById("modal-delete-account-button-submit").classList.remove("is-loading");
+          document.getElementById("modal-delete-account-button-submit").removeAttribute("disabled");
+          logout();
+        } else {
+          document.getElementById("modal-delete-account-button-submit").classList.remove("is-loading");
+          document.getElementById("modal-delete-account-button-submit").removeAttribute("disabled");
+          create_popup("HTTP" + delete_request.status + ": " + delete_request.responseText,true);
+        }
+      }
+    } else {
+      document.getElementById("modal-delete-account-button-submit").classList.remove("is-loading");
+      document.getElementById("modal-delete-account-button-submit").removeAttribute("disabled");
+      create_popup("Password incorrect",true);
     }
   }
 }
 
 // End settings change functions
+
+// Token functions
+async function create_token() {
+  if (get_cookie("securetoken") == null) {
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  var new_permissions = 0;
+  new_permissions = set_bit(new_permissions, 0, document.getElementById("modal-create-token-create-paste").checked)
+  new_permissions = set_bit(new_permissions, 1, document.getElementById("modal-create-token-edit-paste").checked)
+  new_permissions = set_bit(new_permissions, 2, document.getElementById("modal-create-token-delete-paste").checked)
+  new_permissions = set_bit(new_permissions, 3, document.getElementById("modal-create-token-view-private-paste").checked)
+
+  var title = document.getElementById("modal-create-token-name").value;
+
+  var packet = {
+    "name": title,
+    "perms": new_permissions
+  };
+
+  var token_create_request = new XMLHttpRequest();
+  token_create_request.open("POST","/api/internal/token/create/");
+  token_create_request.send(JSON.stringify(packet));
+  token_create_request.onload = function() {
+    if (token_create_request.status == 200) {
+      append_alert("Successfully created token!");
+    } else {
+      append_alert(format("Couldn't create token;\nHTTP{0}: {1}",token_create_request.status,token_create_request.responseText));
+    }
+    window.location.reload();
+  }
+}
+
+async function view_token(token_id) {
+  if (get_cookie("securetoken") == null) {
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  // Get the actual token id thing
+  var token_request = new XMLHttpRequest();
+  token_request.open("GET","/api/internal/token/get/?name="+token_id);
+  token_request.send();
+  token_request.onload = function() {
+    if (token_request.status == 200) {
+      var data = JSON.parse(token_request.responseText);
+      var token_secure_id = data["id"];
+      document.getElementById("modal-view-token-id-token-box").innerText = token_secure_id;
+      document.getElementById("modal-view-token-id-token-title").innerText = format("'{0}' ID", data["title"]);
+
+      open_modal("modal-view-token-id");
+    }
+  }
+}
+
+function get_bit(val, bit) {
+  var mask = 1 << bit;
+  return (val & mask) != 0;
+}
+
+function set_bit(val, bit, state) {
+  var mask = 1 << bit;
+  if (state) {
+    val |= mask;
+  } else {
+    val &= ~mask;
+  }
+
+  return val;
+}
+
+async function edit_token(token_id) {
+  if (get_cookie("securetoken") == null) {
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  // Get the token permissions
+  var token_request = new XMLHttpRequest();
+  token_request.open("GET","/api/internal/token/get/?name="+token_id);
+  token_request.send();
+  token_request.onload = function() {
+    if (token_request.status == 200) {
+      var data = JSON.parse(token_request.responseText);
+      var token_permissions = data["permissions"];
+      var token_secure_id = data["id"];
+      token_edit_id = token_secure_id;
+
+      document.getElementById("modal-edit-token-name").value = data["title"];
+
+      // Bit 0 is create paste
+      document.getElementById("modal-edit-token-create-paste").checked = get_bit(token_permissions, 0)
+      // Bit 1 is edit paste
+      document.getElementById("modal-edit-token-edit-paste").checked = get_bit(token_permissions, 1)
+      // Bit 2 is delete paste
+      document.getElementById("modal-edit-token-delete-paste").checked = get_bit(token_permissions, 2)
+      // Bit 3 is view private paste
+      document.getElementById("modal-edit-token-view-private-paste").checked = get_bit(token_permissions, 3)
+
+      open_modal("modal-edit-token");
+    }
+  }
+}
+
+async function edit_token_confirm() {
+  if (get_cookie("securetoken") == null) {
+    close_modal("modal-edit-token");
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  var new_permissions = 0;
+  new_permissions = set_bit(new_permissions, 0, document.getElementById("modal-edit-token-create-paste").checked)
+  new_permissions = set_bit(new_permissions, 1, document.getElementById("modal-edit-token-edit-paste").checked)
+  new_permissions = set_bit(new_permissions, 2, document.getElementById("modal-edit-token-delete-paste").checked)
+  new_permissions = set_bit(new_permissions, 3, document.getElementById("modal-edit-token-view-private-paste").checked)
+
+  var title = document.getElementById("modal-edit-token-name").value;
+
+  var packet = {
+    "id": token_edit_id,
+    "name": title,
+    "perms": new_permissions
+  };
+
+  var token_edit_request = new XMLHttpRequest();
+  token_edit_request.open("POST","/api/internal/token/edit/");
+  token_edit_request.send(JSON.stringify(packet));
+  token_edit_request.onload = function() {
+    if (token_edit_request.status == 200) {
+      append_alert("Successfully edited token!");
+    } else {
+      append_alert(format("Couldn't edit token;\nHTTP{0}: {1}",token_edit_request.status,token_edit_request.responseText));
+    }
+    window.location.reload();
+  }
+}
+
+async function delete_token(token_id) {
+  if (get_cookie("securetoken") == null) {
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  // Get the actual token id thing
+  var token_request = new XMLHttpRequest();
+  token_request.open("GET","/api/internal/token/get/?name="+token_id);
+  token_request.send();
+  token_request.onload = function() {
+    if (token_request.status == 200) {
+      var data = JSON.parse(token_request.responseText);
+
+      token_delete_id = token_id;
+
+      document.getElementById("modal-delete-token-token-title").innerText = format("Delete '{0}'?s", data["title"]);
+      open_modal("modal-delete-token");
+    }
+  }
+}
+
+async function delete_token_confirm() {
+  if (get_cookie("securetoken") == null) {
+    close_modal("modal-delete-token");
+    open_modal("modal-sudo-mode");
+    var waiting = true;
+    while (waiting) {
+      await sleep(16);
+      waiting = get_cookie("securetoken") == null;
+    }
+  }
+
+  // Get the actual token id thing
+  var token_request = new XMLHttpRequest();
+  token_request.open("GET","/api/internal/token/get/?name="+token_delete_id);
+  token_request.send();
+  token_request.onload = function() {
+    if (token_request.status == 200) {
+      var data = JSON.parse(token_request.responseText);
+
+      var token_secure_id = data["id"];
+
+      var token_delete_request = new XMLHttpRequest();
+      token_delete_request.open("DELETE","/api/internal/token/delete/");
+      var params = {
+        "id": token_secure_id
+      };
+      token_delete_request.send(JSON.stringify(params));
+      token_delete_request.onload = function() {
+        if (token_delete_request.status == 200) {
+          append_alert("Deleted token!");
+        } else {
+          append_alert(format("Couldn't delete token;\nHTTP{0}: {1}",token_delete_request.status,token_delete_request.responseText));
+        }
+        window.location.reload();
+      }
+    }
+  }
+}
+
+// End token functions
 
 // Generic callback for all of the radio buttons
 function modal_avatar_radio_button_callback(ele) {

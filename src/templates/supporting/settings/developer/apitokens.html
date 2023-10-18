@@ -1,0 +1,165 @@
+<div class="modal" id="modal-create-token">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Create Token</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-create-token');"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="box">
+        <input class="input" type="text" id="modal-create-token-name" placeholder="Token Name">
+      </div>
+      <div class="level">
+        <div class="level-item">
+          <div class="box">
+            <p>Create Paste</p>
+            <input type="checkbox" id="modal-create-token-create-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>Edit Paste</p>
+            <input type="checkbox" id="modal-create-token-edit-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>Delete Paste</p>
+            <input type="checkbox" id="modal-create-token-delete-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>View Private Pastes</p>
+            <input type="checkbox" id="modal-create-token-view-private-paste">
+          </div>
+        </div>
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="create_token();">Create Token</button>
+      <button class="button" onclick="close_modal('modal-create-token');">Close</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-view-token-id">
+  <div class="modal-background"></div>
+  <div class="modal-card" style="width:fit-content;">
+    <header class="modal-card-head">
+      <p class="modal-card-title" id="modal-view-token-id-token-title">'' ID</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-view-token-id')"></button>
+    </header>
+    <section class="modal-card-body">
+      <p>Don't share this, as it allows access to your pastes, or deleting them.</p><br>
+      <h1 class="title is-5" id="modal-view-token-id-token-box"></h1>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button" onclick="close_modal('modal-view-token-id');document.getElementById('modal-view-token-id-token-box').innerText=''">Close</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-edit-token">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Edit Token</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-edit-token');token_edit_id=null;"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="box">
+        <input class="input" type="text" id="modal-edit-token-name">
+      </div>
+      <div class="level">
+        <div class="level-item">
+          <div class="box">
+            <p>Create Paste</p>
+            <input type="checkbox" id="modal-edit-token-create-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>Edit Paste</p>
+            <input type="checkbox" id="modal-edit-token-edit-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>Delete Paste</p>
+            <input type="checkbox" id="modal-edit-token-delete-paste">
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="box">
+            <p>View Private Pastes</p>
+            <input type="checkbox" id="modal-edit-token-view-private-paste">
+          </div>
+        </div>
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="edit_token_confirm();">Edit Token</button>
+      <button class="button" onclick="close_modal('modal-edit-token');token_edit_id=null;">Close</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal-delete-token">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title" id="modal-delete-token-token-title">Delete ''</p>
+      <button class="delete" aria-label="close" onclick="close_modal('modal-delete-token');token_delete_id=null;"></button>
+    </header>
+    <section class="modal-card-body">
+      <p>Are you sure you want to delete this token?</p>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-danger" onclick="delete_token_confirm();">Delete Token</button>
+      <button class="button" onclick="close_modal('modal-delete-token');token_delete_id=null;">Close</button>
+    </footer>
+  </div>
+</div>
+
+<div class="level">
+  <div class="level-left">
+    <div class="level-item">
+      <h1 class="title is-3">API Tokens</h1>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <button class="button is-primary" onclick="sudo_open_modal('modal-create-token');">Create Token</button>
+    </div>
+  </div>
+</div>
+
+<table class="table" style="width:100%">
+  <thead>
+    <tr>
+      <th>Token Name</th>
+      <th><abbr title="Create Paste">CP</abbr></th>
+      <th><abbr title="Edit Paste">EP</abbr></th>
+      <th><abbr title="Delete Paste">DP</abbr></th>
+      <th><abbr title="View Private Pastes">VP</abbr></th>
+      <th>View ID</th>
+      <th>Edit</th>
+      <th>Delete</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for token in tokens.list %}
+      <tr>
+        <td>{{ token.name }}</td>
+        <td><iconify-icon icon="{{ token.perm.create }}"></iconify-icon></td>
+        <td><iconify-icon icon="{{ token.perm.edit }}"></iconify-icon></td>
+        <td><iconify-icon icon="{{ token.perm.delete }}"></iconify-icon></td>
+        <td><iconify-icon icon="{{ token.perm.viewpriv }}"></iconify-icon></td>
+        <td><button class="button is-primary" title="View the token ID" onclick="view_token('{{ token.id }}')"><iconify-icon icon="carbon:view"></iconify-icon></button></td>
+        <td><button class="button is-link" onclick="edit_token('{{ token.id }}')"><iconify-icon icon="mdi:edit"></iconify-icon></button></td>
+        <td><button class="button is-danger" onclick="delete_token('{{ token.id }}')"><iconify-icon icon="material-symbols:delete"></iconify-icon></button></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

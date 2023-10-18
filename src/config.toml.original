@@ -55,7 +55,8 @@ devmode = false
   name_min = 3
   name_max = 20
   # Password length limits
-  # This affects new sign ups only!
+  # This affects new sign ups and password changes.
+  # This does not affect the login page.
   password_min = 8
   password_max = 512
   # Hash iteration count. This affects everyone, change with caution!
