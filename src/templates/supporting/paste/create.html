@@ -21,7 +21,11 @@
     </div>
     <hr>
     <h1 class="title is-4">Paste Options</h1>
+    {% if mobile %}
+    <div>
+    {% else %}
     <div style="width:40%;">
+    {% endif %}
       <div class="field">
         <label class="label">Paste Title</label>
         <div class="control">

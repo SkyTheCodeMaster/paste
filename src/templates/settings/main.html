@@ -25,19 +25,27 @@
   </head>
   <body>
     {{ navbar | safe }}
+    {% if not mobile %}
     <div class="columns" style="margin:5px;">
       <div class="column is-2">
+      {% endif %}
         {{ settings_menu | safe }}
+      {% if not mobile %}
       </div>
       <div class="column is-7">
+        {% endif %}
         <div class="box">
           {{ settings_content | safe }}
         </div>
+      {% if not mobile %}
       </div>
       <div class="column is-3">
+      {% endif %}
         {{ paste_sidebar | safe }}
+      {% if not mobile %}
       </div>
     </div>
+    {% endif %}
     {{ footer | safe }}
     <div class="modal" id="modal-sudo-mode">
       <div class="modal-background"></div>

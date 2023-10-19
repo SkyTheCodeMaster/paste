@@ -16,16 +16,22 @@
   </head>
   <body>
     {{ navbar | safe }}
+    {% if not mobile %}
     <div class="columns" style="margin:5px;">
       <div class="column is-1"></div>
       <div class="column is-7">
+      {% endif %}
         {{ edit_paste | safe }}
+      {% if not mobile %}
       </div>
       <div class="column is-1"></div>
       <div class="column is-3">
+      {% endif %}
         {{ paste_sidebar | safe }}
+      {% if not mobile %}
       </div>
     </div>
+    {% endif %}
     {{ footer | safe }}
   </body>
 </html>

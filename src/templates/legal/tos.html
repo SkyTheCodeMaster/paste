@@ -10,8 +10,10 @@
   </head>
   <body>
     {{ navbar | safe }}
+    {% if not mobile %}
     <div class="columns">
       <div class="column is-9">
+      {% endif %}
         <div class="box">
           <h1 class="title is-2">Terms of Service</h1>
           <div class="section">
@@ -44,11 +46,15 @@
             </div>
           </div>
         </div>
+      {% if not mobile %}
       </div>
       <div class="column is-3">
+      {% endif %}
         {{ paste_sidebar | safe }}
+      {% if not mobile %}
       </div>
     </div>
+    {% endif %}
     {{ footer | safe }}
   </body>
 </html>
