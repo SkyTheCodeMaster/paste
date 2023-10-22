@@ -737,7 +737,7 @@ async def get_paste(request: web.Request) -> web.Response:
     _ctx_dict["user"] = {
       "name": p_owner.name
     }
-    ctx_dict: dict[str,Any] = {**grand_context(request), "navbar":navbar,"paste_sidebar":paste_sidebar}
+    ctx_dict: dict[str,Any] = {**grand_context(request), "navbar":navbar,"paste_sidebar":paste_sidebar, "footer":sup_templates["footer.html"].source}
     ctx_dict["paste"] = sup_templates["paste/main.html"].render(Context(_ctx_dict))
   else:
     _ctx_dict["paste"] = {
