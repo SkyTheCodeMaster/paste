@@ -115,9 +115,9 @@ window.addEventListener("load", function() {
       output.onclick = function() { textarea.focus() }
       textarea.addEventListener("input", function() {
         // Resizing
-        textarea.style.height = "auto";
+        //textarea.style.height = "auto";
         textarea.style.height = textarea.scrollHeight + "px";
-        output.style.height = "auto";
+        //output.style.height = "auto";
         output.style.height = textarea.scrollHeight + "px";
         // Highlighting
         if (synswitch.checked) {

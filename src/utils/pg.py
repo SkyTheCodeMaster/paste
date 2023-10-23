@@ -440,6 +440,5 @@ class PGUtils:
       user = user.id
     async with self.pool.acquire() as conn:
       folders_record = await conn.fetch("SELECT DISTINCT Folder FROM Pastes WHERE Creator=$1;", user)
-      print(folders_record)
       folders = [record["folder"] for record in folders_record]
       return folders

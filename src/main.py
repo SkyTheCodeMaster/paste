@@ -1,6 +1,7 @@
 import asyncio
 import tomllib
 import logging
+import ipaddress
 import math
 import os
 
@@ -8,9 +9,11 @@ import asyncpg
 import coloredlogs
 import aiohttp
 from aiohttp import web
+from aiohttp_remotes import setup, XForwardedStrict
 
 from utils.utils import get_routes
 from utils.pg import PGUtils
+from utils.logger import CustomWebLogger
 # Constant variables
 LOGFMT = "[%(filename)s][%(asctime)s][%(levelname)s] %(message)s"
 LOGDATEFMT = "%Y/%m/%d-%H:%M:%S"
@@ -38,11 +41,13 @@ coloredlogs.install(
   datefmt=LOGDATEFMT
 )
 
+LOG = logging.getLogger(__name__)
+
 app: web.Application = web.Application(
-  middlewares=[web.normalize_path_middleware(append_slash=True,merge_slashes=True)]
+  middlewares=[web.normalize_path_middleware(append_slash=True,merge_slashes=True)],
+  logger = CustomWebLogger(LOG)
 )
 
-LOG = logging.getLogger(__name__)
 
 disabledCogs:list[str] = []
 for cog in [f.replace(".py","") for f in os.listdir("cogs") if os.path.isfile(os.path.join("cogs",f))]:
@@ -55,6 +60,13 @@ app.add_routes([web.static("/","static")])
 
 async def startup():
   try:
+    await setup(
+      app,
+      XForwardedStrict(
+        [[ipaddress.ip_address("127.0.0.1")]]
+      )
+    )
+
     pool = await asyncpg.create_pool(
       config["pg"]["url"],
       password=config["pg"]["password"],

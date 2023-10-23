@@ -254,7 +254,6 @@ async def get_index(request: web.Request) -> web.Response:
 @routes.get("/user/{user_name:\w+}/")
 async def get_user(request: web.Request) -> web.Response:
   user_name = request.match_info["user_name"]
-  print(user_name)
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
@@ -351,7 +350,6 @@ async def get_user(request: web.Request) -> web.Response:
 async def get_user(request: web.Request) -> web.Response:
   user_name = request.match_info["user_name"]
   folder = request.match_info["folder"]
-  print(user_name)
   app: web.Application = request.app
   pg: PGUtils = app.pg
 

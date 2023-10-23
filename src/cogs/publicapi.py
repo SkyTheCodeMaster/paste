@@ -145,7 +145,6 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return token
   
   data: dict = await request.json()
-  print(data)
   if (not data.get("title")) or (not data.get("content")) or (type(data.get("visibility",None)) is not int):
     return web.Response(status=400,text="missing body element")
 
@@ -167,12 +166,55 @@ async def api_paste_create(request: web.Request) -> web.Response:
     folder=data.get("folder","")
   )
 
-  newPaste,reason = await pg.create_new_paste(paste,token)
+  new_paste,reason = await pg.create_new_paste(paste,token)
 
-  if not newPaste:
+  if not new_paste:
     return web.Response(text=reason,status=400)
 
-  return web.Response(status=200,text=newPaste.id)
+  return web.Response(status=200,text=new_paste.id)
+
+@routes.post("/api/paste/create_query/")
+async def api_paste_create(request: web.Request) -> web.Response:
+  app: web.Application = request.app
+  pg: PGUtils = app.pg
+
+  # In this endpoint, instead of the post data being a json of the data,
+  # the query is the "header" of the paste, and the post data is the contents.
+
+  query = request.query
+
+  token = await pg.handle_auth(request)
+  if type(token) is web.Response:
+    return token
+  
+  data: dict = await request.text()
+  if not query.get("title"):
+    return web.Response(status=400,text="missing title")
+  if type(query.get("visibility",None)) is not int:
+    return web.Response(status=400,text="invalid visibility")
+
+  try:
+    int(query.get("visibility"))
+  except ValueError:
+    return web.Response(status=400,text="invalid visibility")
+  
+  paste = Paste(
+    id="",
+    creator=token.owner.id,
+    data=data,
+    visibility=query.get("visibility"),
+    title=query.get("title"),
+    syntax=query.get("syntax","plaintext"),
+    tags=query.get("tags",""),
+    folder=query.get("folder","")
+  )
+
+  new_paste,reason = await pg.create_new_paste(paste,token)
+
+  if not new_paste:
+    return web.Response(text=reason,status=400)
+
+  return web.Response(status=200,text=new_paste.id)
 
 @routes.post("/api/paste/edit/")
 async def api_paste_edit(request: web.Request) -> web.Response:
