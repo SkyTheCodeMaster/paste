@@ -145,12 +145,12 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return token
   
   data: dict = await request.json()
-  if (not data.get("title")) or (not data.get("content")) or (type(data.get("visibility",None)) is not int):
+  if (not data.get("title")) or (not data.get("content")):
     return web.Response(status=400,text="missing body element")
 
   try:
-    int(data.get("visibility"))
-  except ValueError:
+    int(data.get("visibility"), "a")
+  except (TypeError, ValueError):
     return web.Response(status=400,text="invalid visibility")
 
   syntax: str = data.get("syntax","plaintext")
@@ -183,6 +183,9 @@ async def api_paste_create(request: web.Request) -> web.Response:
 
   query = request.query
 
+  print(query.get("visibility"), "a")
+  print(query)
+  int(query.get("visibility"))
   token = await pg.handle_auth(request)
   if type(token) is web.Response:
     return token
@@ -190,19 +193,17 @@ async def api_paste_create(request: web.Request) -> web.Response:
   data: dict = await request.text()
   if not query.get("title"):
     return web.Response(status=400,text="missing title")
-  if type(query.get("visibility",None)) is not int:
-    return web.Response(status=400,text="invalid visibility")
 
   try:
-    int(query.get("visibility"))
-  except ValueError:
-    return web.Response(status=400,text="invalid visibility")
+    int(query.get("visibility"), "a")
+  except (TypeError, ValueError):
+    pass#return web.Response(status=400,text="invalid visibility")
   
   paste = Paste(
     id="",
     creator=token.owner.id,
     data=data,
-    visibility=query.get("visibility"),
+    visibility=int(query.get("visibility")),
     title=query.get("title"),
     syntax=query.get("syntax","plaintext"),
     tags=query.get("tags",""),

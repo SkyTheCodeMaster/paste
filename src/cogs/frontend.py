@@ -4,6 +4,7 @@ import datetime
 import os
 import pathlib
 import tomllib
+import urllib.parse
 from typing import TYPE_CHECKING
 
 import humanize
@@ -346,10 +347,11 @@ async def get_user(request: web.Request) -> web.Response:
   rendered = templates["user/exists.html"].render(Context({**grand_context(request),**ctx_dict}))
   return web.Response(body=rendered,content_type="text/html")
 
-@routes.get("/user/{user_name:\w+}/{folder:\w+}/")
+@routes.get("/user/{user_name:\w+}/{folder:.+?}/")
 async def get_user(request: web.Request) -> web.Response:
   user_name = request.match_info["user_name"]
   folder = request.match_info["folder"]
+  folder = urllib.parse.unquote(folder)
   app: web.Application = request.app
   pg: PGUtils = app.pg
 
