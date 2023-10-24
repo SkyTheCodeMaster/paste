@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp import web
+
 from utils.paste import Paste
 from utils.utils import Visibility
 
@@ -16,6 +18,9 @@ if TYPE_CHECKING:
   from utils.user import User
 
 routes = web.RouteTableDef()
+LOG = logging.getLogger(__name__)
+
+VALID_SYNTAX_LANGUAGES = ["abap","actionscript-3","ada","apache","apex","apl","applescript","ara","asm","astro","awk","ballerina","bash","bat","batch","be","berry","bibtex","bicep","blade","c","c#","cadence","cdc","clarity","clj","clojure","cmake","cmd","cobol","codeql","coffee","console","cpp","crystal","cs","csharp","css","cue","d","dart","dax","diff","docker","dream-maker","elixir","elm","erb","erl","erlang","f#","fish","fs","fsharp","fsl","gherkin","git-commit","git-rebase","glsl","gnuplot","go","graphql","groovy","hack","haml","handlebars","haskell","hbs","hcl","hlsl","hs","html","http","imba","ini","jade","java","javascript","jinja-html","jison","js","json","json5","jsonc","jsonnet","jssm","jsx","julia","kotlin","latex","less","liquid","lisp","logo","lua","make","makefile","markdown","marko","matlab","md","mdx","mermaid","nginx","nim","nix","objc","objective-c","objective-cpp","ocaml","pascal","perl","perl6","php","plsql","postcss","powerquery","powershell","prisma","prolog","properties","proto","ps","ps1","pug","puppet","purescript","py","python","ql","r","raku","razor","rb","rel","riscv","rs","rst","ruby","rust","sas","sass","scala","scheme","scss","sh","shader","shaderlab","shell","shellscript","smalltalk","solidity","sparql","sql","ssh-config","stata","styl","stylus","svelte","swift","system-verilog","tasl","tcl","tex","toml","ts","tsx","turtle","twig","typescript","v","vb","verilog","vhdl","vim","viml","vimscript","vue","vue-html","wasm","wenyan","wgsl","xml","xsl","yaml","yml","zenscript","zsh","文言"]
 
 # Get JSON of paste
 @routes.get("/api/paste/get/{tail:.*}")
@@ -149,11 +154,14 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return web.Response(status=400,text="missing body element")
 
   try:
-    int(data.get("visibility"), "a")
-  except (TypeError, ValueError):
+    int(data.get("visibility"))
+  except (TypeError, ValueError) as e:
+    LOG.exception(e)
     return web.Response(status=400,text="invalid visibility")
 
   syntax: str = data.get("syntax","plaintext")
+  if syntax not in VALID_SYNTAX_LANGUAGES:
+    syntax = "plaintext"
   
   paste = Paste(
     id="",
@@ -183,8 +191,7 @@ async def api_paste_create(request: web.Request) -> web.Response:
 
   query = request.query
 
-  print(query.get("visibility"), "a")
-  print(query)
+
   int(query.get("visibility"))
   token = await pg.handle_auth(request)
   if type(token) is web.Response:
@@ -195,17 +202,20 @@ async def api_paste_create(request: web.Request) -> web.Response:
     return web.Response(status=400,text="missing title")
 
   try:
-    int(query.get("visibility"), "a")
+    int(query.get("visibility"))
   except (TypeError, ValueError):
-    pass#return web.Response(status=400,text="invalid visibility")
+    return web.Response(status=400,text="invalid visibility")
   
+  syntax = query.get("syntax", "plaintext")
+  if syntax not in VALID_SYNTAX_LANGUAGES:
+    syntax = "plaintext"
   paste = Paste(
     id="",
     creator=token.owner.id,
     data=data,
     visibility=int(query.get("visibility")),
     title=query.get("title"),
-    syntax=query.get("syntax","plaintext"),
+    syntax=syntax,
     tags=query.get("tags",""),
     folder=query.get("folder","")
   )
