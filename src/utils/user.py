@@ -86,3 +86,10 @@ class DeletedUser(User):
     self.name = "Deleted User"
     self.email = "N/A"
     self.id = -1
+
+class PublicUser(User):
+  "Represents the 'author' of a paste created with no account."
+  def __init__(self):
+    self.name = "N/A"
+    self.email = "N/A"
+    self.id = -2

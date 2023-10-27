@@ -17,7 +17,7 @@ function delete_paste() {
   request.onload = function() {
     if (request.status == 200) {
       append_alert("Paste deleted successfully!");
-      window.location.replace("/");
+      history.back();
     } else if (request.status == 403) {
       alert("Permission denied");
     } else if (request.status == 400) {

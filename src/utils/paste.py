@@ -5,6 +5,8 @@ import tomllib
 import urllib.parse
 from typing import TYPE_CHECKING
 
+from utils.user import PublicUser
+
 if TYPE_CHECKING:
   from typing import Union
 
@@ -76,7 +78,10 @@ class Paste:
 
   async def get_creator(self,pg: PGUtils) -> User:
     "Helper method to get the creator of the paste."
-    return await pg.get_user(id=self.creator)
+    if self.creator is None:
+      return PublicUser()
+    else:
+      return await pg.get_user(id=self.creator)
 
   @property
   def text_content(self) -> str:
