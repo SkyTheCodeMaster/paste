@@ -38,6 +38,7 @@
         {% if folder_name %}
           <div class="box">
             <a href=".."><iconify-icon icon="mdi:arrow-up-left" width="48" height="48" style="float:left;"></iconify-icon></a>
+            <iconify-icon class="pr-3" icon="mdi:folder-outline" width="48" height="48" style="float:left;"></iconify-icon>
             <h1 class="title is-2">{{ folder_name }}</h1>
           </div>
         {% endif %}
@@ -75,6 +76,8 @@
                 </div>
               </div>
             {% endfor %}
+          {% elif folder_name %}
+            <h1 class="title is-3">This folder has no pastes.</h1>
           {% else %}
             <h1 class="title is-3">This user has no pastes.</h1>
           {% endif %}

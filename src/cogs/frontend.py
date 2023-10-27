@@ -429,7 +429,7 @@ async def get_user(request: web.Request) -> web.Response:
   }
 
   ctx_dict = {
-    "folder_name": f"{folder} folder",
+    "folder_name": folder,
     "pastes": template_pastes,
     "user": c_user,
     "navbar": navbar,
