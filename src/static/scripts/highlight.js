@@ -1,3 +1,4 @@
+var hjsHighlighter
 const RANGE_REGEX = /(\d+)-(\d+)/;
 
 function get_highlight_language(classes) {
@@ -203,6 +204,7 @@ window.addEventListener("load", function() {
       langs: required
     })
     .then(highlighter => {
+      hjsHighlighter = highlighter;
       for (block of this.document.getElementsByClassName("highlight-me")) {
         if (block.getAttribute("data-is-main-paste") != null) {
           // This is the main paste

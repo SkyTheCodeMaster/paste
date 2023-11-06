@@ -23,6 +23,7 @@
 .main-paste-code .focus {
   background-color: hsl(60, 100%, 83.33%);
   width: 100%;
+  display: inline-block;
 }
 
 .main-paste-code .line-numbers {
